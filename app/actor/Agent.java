@@ -670,7 +670,7 @@ public class Agent extends AbstractActor {
                     break;
                 case "dataaggregator":
                 case "da":
-                    cluster = new DataAggregator(this.minZoom, this.maxZoom, query.indexType, analysis);
+                    cluster = new DataAggregator(this.minZoom, this.maxZoom, query.indexType, query.aggregator);
                     break;
                 case "quadtreeaggregator":
                 case "qta":

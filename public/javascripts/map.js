@@ -106,6 +106,8 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
         $scope.query.bipartite = e.bipartite;
       }
 
+      $scope.query.aggregator = $scope.scatterType;
+
       // only send query when comprised query has enough information, i.e. keyword, order, algorithm
       if ($scope.query.keyword && $scope.query.order && $scope.query.algorithm) {
         $scope.query.clusterKey = $scope.query.keyword + "-" + $scope.query.order + "-" + $scope.query.algorithm;

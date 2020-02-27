@@ -2,15 +2,13 @@ package algorithms;
 
 import model.Cluster;
 import model.PointTuple;
-import util.I2DIndex;
-import util.IndexCreator;
-import util.MyMemory;
-import util.MyTimer;
+import util.*;
 
 import java.util.*;
 
 public class DataAggregator extends SuperCluster {
     String indexType; // KDTree / GridIndex
+    String aggregator;
 
     I2DIndex index;
     List<Cluster> points;
@@ -20,10 +18,11 @@ public class DataAggregator extends SuperCluster {
     Map<String, Double> timing;
     //-Timing-//
 
-    public DataAggregator(int _minZoom, int _maxZoom, String _indexType, boolean _analysis) {
+    public DataAggregator(int _minZoom, int _maxZoom, String _indexType, String aggregator) {
         this.minZoom = _minZoom;
         this.maxZoom = _maxZoom;
         this.indexType = _indexType;
+        this.aggregator = aggregator;
         this.index = IndexCreator.createIndex(indexType, 100);
         this.points = new ArrayList<>();
 
@@ -111,26 +110,56 @@ public class DataAggregator extends SuperCluster {
         List<Cluster> allPoints = getClusters(x0, y0, x1, y1);
         System.out.println("[Data Aggregator] got " + allPoints.size() + " raw data points. Now aggregating ...");
         long start = System.nanoTime();
-        // aggregate into a small set of aggregated points based on resolution (resX, resY)
         List<Cluster> aggPoints = new ArrayList<>();
-        boolean[][] bitmap = new boolean[resX][resY];
-        double iX0 = lngX(x0);
-        double iY0 = latY(y0);
-        double iX1 = lngX(x1);
-        double iY1 = latY(y1);
-        double deltaX = iX1 - iX0;
-        double deltaY = iY1 - iY0;
-        for (Cluster point: allPoints) {
-            // find pixel index of this point based on resolution resX * resY
-            int i = (int) Math.floor((point.getX() - iX0) * resX / deltaX);
-            int j = (int) Math.floor((point.getY() - iY0) * resY / deltaY);
-            // only add it into result when <i, j> is not in set
-            if (!bitmap[i][j]) {
-                bitmap[i][j] = true;
-                Cluster cluster = point.clone();
-                cluster.setX(xLng(cluster.getX()));
-                cluster.setY(yLat(cluster.getY()));
-                aggPoints.add(cluster);
+        // deck-gl aggregator uses DeckGLRenderer to aggregate points into a small subset
+        if (this.aggregator.equalsIgnoreCase("deck-gl")) {
+            // (1) build an temporary image to do the aggregation
+            // the image is a square at given zoom level
+            // (1-1) find the center of the viewport as center of the region of rendered image
+            double iX0 = lngX(x0);
+            double iY0 = latY(y0);
+            double iX1 = lngX(x1);
+            double iY1 = latY(y1);
+            double cX = (iX0 + iX1) / 2;
+            double cY = (iY0 + iY1) / 2;
+            // (1-2) find the side length (Dimension) of the square image for given zoom level
+            double pixelLength = 1.0 / 256 / Math.pow(2, zoom);
+            int resolution = Math.max(resX, resY);
+            double halfDimension = pixelLength * resolution / 2;
+            IRenderer renderer = new DeckGLRenderer(Constants.RADIUS_IN_PIXELS);
+            byte[] image = renderer.createRendering(resolution);
+            // (2) traverse all points to reduce those do not change the rendering effect
+            for (Cluster point: allPoints) {
+                if (renderer.render(image, cX, cY, halfDimension, resolution, point)) {
+                    Cluster cluster = point.clone();
+                    cluster.setX(xLng(cluster.getX()));
+                    cluster.setY(yLat(cluster.getY()));
+                    aggPoints.add(cluster);
+                }
+            }
+        }
+        // other aggregators use "snapping" aggregation
+        else {
+            // aggregate into a small set of aggregated points based on resolution (resX, resY)
+            boolean[][] bitmap = new boolean[resX][resY];
+            double iX0 = lngX(x0);
+            double iY0 = latY(y0);
+            double iX1 = lngX(x1);
+            double iY1 = latY(y1);
+            double deltaX = iX1 - iX0;
+            double deltaY = iY1 - iY0;
+            for (Cluster point : allPoints) {
+                // find pixel index of this point based on resolution resX * resY
+                int i = (int) Math.floor((point.getX() - iX0) * resX / deltaX);
+                int j = (int) Math.floor((point.getY() - iY0) * resY / deltaY);
+                // only add it into result when <i, j> is not in set
+                if (!bitmap[i][j]) {
+                    bitmap[i][j] = true;
+                    Cluster cluster = point.clone();
+                    cluster.setX(xLng(cluster.getX()));
+                    cluster.setY(yLat(cluster.getY()));
+                    aggPoints.add(cluster);
+                }
             }
         }
         long end = System.nanoTime();

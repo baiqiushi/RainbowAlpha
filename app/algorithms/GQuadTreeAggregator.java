@@ -17,7 +17,7 @@ public class GQuadTreeAggregator extends SuperCluster {
     // resolution of each node (similar to a tile in map systems), e.g. 512
     public static int oneNodeResolution;
 
-    public static IRenderer aggregator;
+    public static IRenderer renderer;
 
     public class QuadTree {
         // Store count of the sub-tree
@@ -394,7 +394,7 @@ public class GQuadTreeAggregator extends SuperCluster {
         // zoom level 0 is fixed with dimension 1.0
         highestLevelNodeDimension = 1.0 / Math.pow(2, this.maxZoom);
 
-        aggregator = new DeckGLRenderer(Constants.RADIUS_IN_PIXELS);
+        renderer = new DeckGLRenderer(Constants.RADIUS_IN_PIXELS);
 
         // initialize the timing map
         if (keepTiming) {
@@ -413,7 +413,7 @@ public class GQuadTreeAggregator extends SuperCluster {
         int skip = 0;
         for (PointTuple point: points) {
             if (this.quadTree.insert(0.5, 0.5, 0.5,
-                    createPoint(point.getX(), point.getY(), point.getId()), aggregator, 0))
+                    createPoint(point.getX(), point.getY(), point.getId()), renderer, 0))
                 count ++;
             else
                 skip ++;

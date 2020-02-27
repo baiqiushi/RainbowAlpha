@@ -18,4 +18,5 @@ public class Query {
     public boolean bipartite; // for treeCut: true / false
     public int resX; // frontend resolution x
     public int resY; // frontend resolution y
+    public String aggregator; // for DataAggregator and QuadTreeAggregators: "gl-pixel" / "leaflet" / "deck-gl"
 }
