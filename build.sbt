@@ -1,6 +1,6 @@
 import Dependencies._
 
-name := """clusterviz"""
+name := """bigspatialviz"""
 organization := "edu.uci.ics.cloudberry"
 
 version := "1.0-SNAPSHOT"

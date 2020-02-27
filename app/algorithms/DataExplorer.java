@@ -1,4 +1,4 @@
-package clustering;
+package algorithms;
 
 import model.Cluster;
 import model.PointTuple;

@@ -1,6 +1,6 @@
 package exps;
 
-import clustering.SuperCluster;
+import algorithms.SuperCluster;
 import model.PointTuple;
 import util.PostgreSQL;
 

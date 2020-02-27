@@ -1,6 +1,6 @@
 package util;
 
-import clustering.SuperCluster;
+import algorithms.SuperCluster;
 import model.Point;
 
 public class MemoryTest {

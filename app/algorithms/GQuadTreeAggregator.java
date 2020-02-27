@@ -1,4 +1,4 @@
-package clustering;
+package algorithms;
 
 import javafx.util.Pair;
 import model.Cluster;

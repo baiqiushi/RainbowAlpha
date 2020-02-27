@@ -1,9 +1,7 @@
 package util;
 
-import clustering.SuperCluster;
+import algorithms.SuperCluster;
 import model.Point;
-
-import java.io.IOException;
 
 public class GridIndexTest {
     public static void main(String[] args) {

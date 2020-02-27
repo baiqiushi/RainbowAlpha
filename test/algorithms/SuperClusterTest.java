@@ -1,4 +1,4 @@
-package clustering;
+package algorithms;
 
 import model.PointTuple;
 import util.PostgreSQL;
