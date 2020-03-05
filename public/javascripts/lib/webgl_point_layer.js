@@ -245,14 +245,14 @@ var WebGLPointLayer = L.CanvasLayer.extend({
 
         switch (this._renderMode) {
             case "raster":
-                this._programs[0].matLoc = gl.getUniformLocation(this._programs[0], "u_matrix");
+                this._programs[1].matLoc = gl.getUniformLocation(this._programs[1], "u_matrix");
                 break;
             case "pixel":
-                this._programs[0].mat1Loc = gl.getUniformLocation(this._programs[0], "u_matrix1");
-                this._programs[0].mat2Loc = gl.getUniformLocation(this._programs[0], "u_matrix2");
-                this._programs[0].vert0Loc = gl.getUniformLocation(this._programs[0], "u_vertex0");
-                this._programs[0].shiftLoc = gl.getUniformLocation(this._programs[0], "u_shift");
-                this._programs[0].resLoc = gl.getUniformLocation(this._programs[0], "u_resolution");
+                this._programs[1].mat1Loc = gl.getUniformLocation(this._programs[1], "u_matrix1");
+                this._programs[1].mat2Loc = gl.getUniformLocation(this._programs[1], "u_matrix2");
+                this._programs[1].vert0Loc = gl.getUniformLocation(this._programs[1], "u_vertex0");
+                this._programs[1].shiftLoc = gl.getUniformLocation(this._programs[1], "u_shift");
+                this._programs[1].resLoc = gl.getUniformLocation(this._programs[1], "u_resolution");
                 break;
         }
         this._programs[1].pointSize = gl.getUniformLocation(this._programs[1], "u_pointSize");
@@ -627,15 +627,24 @@ var WebGLPointLayer = L.CanvasLayer.extend({
         var pi_180 = Math.PI / 180.0;
         var pi_4 = Math.PI * 4;
         var sinLatitude = Math.sin(latitude * pi_180);
-        // var pixelY = (0.5 - Math.log((1 + sinLatitude) / (1 - sinLatitude)) / (pi_4)) * 256;
-        // var pixelX = ((longitude + 180) / 360) * 256;
-        var pixelY = (0.5 - Math.log((1 + sinLatitude) / (1 - sinLatitude)) / (pi_4));
-        var pixelX = ((longitude + 180) / 360);
-        var pixel = {
-            x: pixelX,
-            y: pixelY
-        };
-        return pixel;
+        switch (this._renderMode) {
+            case "raster":
+                var pixelY = (0.5 - Math.log((1 + sinLatitude) / (1 - sinLatitude)) / (pi_4)) * 256;
+                var pixelX = ((longitude + 180) / 360) * 256;
+                var pixel = {
+                    x: pixelX,
+                    y: pixelY
+                };
+                return pixel;
+            case "pixel":
+                var pixelY = (0.5 - Math.log((1 + sinLatitude) / (1 - sinLatitude)) / (pi_4));
+                var pixelX = ((longitude + 180) / 360);
+                var pixel = {
+                    x: pixelX,
+                    y: pixelY
+                };
+                return pixel;
+        }
     },
 
 

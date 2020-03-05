@@ -52,7 +52,7 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
         $scope.bipartite = false;
         $scope.mwVisualizationTypes = ["cluster", "scatter", "heat"];
         $scope.feVisualizationTypes = ["cluster", "scatter", "heat"];
-        $scope.scatterTypes = ["gl-pixel","leaflet", "deck-gl"];
+        $scope.scatterTypes = ["gl-pixel", "gl-raster", "leaflet", "deck-gl"];
         $scope.recording = false;
         $scope.replaying = false;
 

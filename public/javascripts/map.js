@@ -684,6 +684,17 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
             break;
         }
 
+        /**
+         * response: {
+         *   result: {
+         *     data: [
+         *       [lat1, lng1, count1],
+         *       [lat2, lng2, count2],
+         *       ...
+         *     ]
+         *   }
+         * }
+         */
         console.log("===== websocket response =====");
         console.log(JSON.stringify(response));
 
@@ -853,51 +864,6 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
     };
 
     /** middleware mode */
-    // Backup for mask-canvas
-    // function for drawing scatter plot layer
-    // $scope.drawMWScatterLayer = function(data) {
-    //   // timing for rendering
-    //   $scope.renderStart = performance.now();
-    //
-    //   // initialize the scatter layer
-    //   if (!$scope.scatterLayer) {
-    //     let circleRadius = $scope.circleRadius;
-    //     $scope.scatterLayer = L.TileLayer.maskCanvas({
-    //       radius: circleRadius,  // radius in pixels or in meters (see useAbsoluteRadius)
-    //       useAbsoluteRadius: false,  // true: r in meters, false: r in pixels
-    //       color: 'blue',  // the color of the layer
-    //       opacity: 0.8,  // opacity of the not covered area
-    //       noMask: true//,  // true results in normal (filled) circled, instead masked circles
-    //       //lineColor: 'blue'   // color of the circle outline if noMask is true
-    //     }).addTo($scope.map);
-    //     $scope.points = [];
-    //   }
-    //
-    //   // update the scatter layer
-    //   if (data.length > 0) {
-    //     $scope.points = data; // [lng, lat, point_count]
-    //     console.log("[draw scatterplot] drawing points size = " + data.length);
-    //     // construct consumable points array for scatter layer
-    //     let points = [];
-    //     for (let i = 0; i < data.length; i ++) {
-    //       let point = data[i];
-    //       points.push([point[0], point[1]]);
-    //     }
-    //     // redraw scatter layer
-    //     $scope.scatterLayer.setData(points);
-    //   }
-    //
-    //   // timing for rendering
-    //   let renderEnd = performance.now();
-    //   let renderTime = (renderEnd - $scope.renderStart) / 1000.0; // seconds
-    //   console.log("renderTime: " + renderTime + " seconds.");
-    //   if ($scope.timeActions) {
-    //     $scope.actionTime.renderTime = renderTime;
-    //     $scope.actionTimings.push($scope.actionTime);
-    //   }
-    // };
-
-    /** middleware mode */
     // function for drawing scatter plot layer
     $scope.drawMWScatterLayer = function(data) {
       // timing for rendering
@@ -975,7 +941,7 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
               id: 'deck-gl-scatter',
               data: points,
               /* data accessors */
-              radiusMinPixels: $scope.circleRadius,
+              radiusMinPixels: Math.round($scope.circleRadius),
               getPosition: d => [d[1], d[0]],     // returns longitude, latitude, [altitude]
               getRadius: d => $scope.circleRadius,  // returns radius in meters
               getFillColor: d => [0, 0, 255]           // returns R, G, B, [A] in 0-255 range
@@ -1172,44 +1138,6 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
         console.log("[Frontend - heatmap] takes " + ((end - start) / 1000.0) + " seconds.");
       }
     };
-
-    /** frontend mode */
-    // Backup for mask-canvas
-    // $scope.drawFEScatterLayer = function(data) {
-    //   // initialize the scatter layer
-    //   if (!$scope.scatterLayer) {
-    //     let circleRadius = $scope.circleRadius;
-    //     $scope.scatterLayer = L.TileLayer.maskCanvas({
-    //       radius: circleRadius,  // radius in pixels or in meters (see useAbsoluteRadius)
-    //       useAbsoluteRadius: false,  // true: r in meters, false: r in pixels
-    //       color: 'blue',  // the color of the layer
-    //       opacity: 0.8,  // opacity of the not covered area
-    //       noMask: true//,  // true results in normal (filled) circled, instead masked circles
-    //       //lineColor: 'blue'   // color of the circle outline if noMask is true
-    //     }).addTo($scope.map);
-    //     $scope.rawData = [];
-    //   }
-    //
-    //   // update the scatter layer
-    //   if (data.length > 0) {
-    //     $scope.rawData.push(...data); // [lng, lat, id]
-    //     console.log("[Frontend - scatter-plot] drawing points size = " + $scope.rawData.length);
-    //     let start = performance.now();
-    //     // construct consumable points array for scatter layer
-    //     let points = [];
-    //     for (let i = 0; i < $scope.rawData.length; i ++) {
-    //       let point = $scope.rawData[i];
-    //       points.push([point[0], point[1]]);
-    //     }
-    //     let end = performance.now();
-    //     console.log("[Frontend - scatter-plot] transforming data takes " + ((end - start) / 1000.0) + " seconds.");
-    //     start = performance.now();
-    //     // redraw scatter layer
-    //     $scope.scatterLayer.setData(points);
-    //     end = performance.now();
-    //     console.log("[Frontend - scatter-plot] rendering takes " + ((end - start) / 1000.0) + " seconds.");
-    //   }
-    // };
 
     /** frontend mode */
     $scope.drawFEScatterLayer = function(data) {
