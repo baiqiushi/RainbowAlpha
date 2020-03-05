@@ -931,7 +931,6 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
             $scope.map.addLayer($scope.scatterLayer);
             break;
           case "deck-gl":
-            console.log("lat = " + $scope.lat + ", lng = " + $scope.lng + ", zoom = " + $scope.zoom);
             $scope.scatterLayer = new deck.DeckGL({
               container: 'deck-gl-canvas',
               initialViewState: {
@@ -993,6 +992,12 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
                     pitch: 0
                   }
               });
+            console.log("==== view state for deck.lg ====");
+            console.log("latitude: " + $scope.map.getCenter().lat);
+            console.log("longitude: " + $scope.map.getCenter().lng);
+            console.log("zoom: " + ($scope.map.getZoom() - 1));
+            console.log("bearing: " + 0);
+            console.log("pitch: " + 0);
             break;
         }
       }

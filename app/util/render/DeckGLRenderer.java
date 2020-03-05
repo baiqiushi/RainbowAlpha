@@ -1,6 +1,7 @@
-package util;
+package util.render;
 
 import model.Point;
+import util.UnsignedByte;
 
 public class DeckGLRenderer implements IRenderer {
 

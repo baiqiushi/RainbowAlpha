@@ -5,8 +5,8 @@ import model.Cluster;
 import model.Point;
 import model.PointTuple;
 import util.Constants;
-import util.DeckGLRenderer;
-import util.IRenderer;
+import util.render.DeckGLRenderer;
+import util.render.IRenderer;
 import util.MyMemory;
 
 import java.util.*;

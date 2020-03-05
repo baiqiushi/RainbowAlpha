@@ -1,4 +1,4 @@
-package util;
+package util.render;
 
 import model.Point;
 

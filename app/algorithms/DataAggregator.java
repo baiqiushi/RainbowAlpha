@@ -3,6 +3,7 @@ package algorithms;
 import model.Cluster;
 import model.PointTuple;
 import util.*;
+import util.render.DeckGLRendererV2;
 
 import java.util.*;
 
@@ -111,29 +112,18 @@ public class DataAggregator extends SuperCluster {
         System.out.println("[Data Aggregator] got " + allPoints.size() + " raw data points. Now aggregating ...");
         long start = System.nanoTime();
         List<Cluster> aggPoints = new ArrayList<>();
-        // deck-gl aggregator uses DeckGLRenderer to aggregate points into a small subset
+        // deck-gl aggregator uses DeckGLRendererV2 to aggregate points into a small subset
         if (this.aggregator.equalsIgnoreCase("deck-gl")) {
-            // (1) build an temporary image to do the aggregation
-            // the image is a square at given zoom level
-            // (1-1) find the center of the viewport as center of the region of rendered image
-            double iX0 = lngX(x0);
-            double iY0 = latY(y0);
-            double iX1 = lngX(x1);
-            double iY1 = latY(y1);
-            double cX = (iX0 + iX1) / 2;
-            double cY = (iY0 + iY1) / 2;
-            // (1-2) find the side length (Dimension) of the square image for given zoom level
-            double pixelLength = 1.0 / 256 / Math.pow(2, zoom);
-            int resolution = Math.max(resX, resY);
-            double halfDimension = pixelLength * resolution / 2;
-            IRenderer renderer = new DeckGLRenderer(Constants.RADIUS_IN_PIXELS);
-            byte[] image = renderer.createRendering(resolution);
-            // (2) traverse all points to reduce those do not change the rendering effect
+            // 1) create an DeckGLRendererV2
+            DeckGLRendererV2 deckgl = new DeckGLRendererV2(Constants.RADIUS_IN_PIXELS, 1.0);
+            // 2) create a rendering with given resolution
+            byte[] image = deckgl.createRendering(resX, resY);
+            // 3) traverse all points to reduce those do not change the rendering effect
             for (Cluster point: allPoints) {
-                if (renderer.render(image, cX, cY, halfDimension, resolution, point)) {
-                    Cluster cluster = point.clone();
-                    cluster.setX(xLng(cluster.getX()));
-                    cluster.setY(yLat(cluster.getY()));
+                Cluster cluster = point.clone();
+                cluster.setX(xLng(cluster.getX()));
+                cluster.setY(yLat(cluster.getY()));
+                if (deckgl.render(image, resX, resY, cluster)) {
                     aggPoints.add(cluster);
                 }
             }
