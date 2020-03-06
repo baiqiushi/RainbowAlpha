@@ -62,7 +62,19 @@ public class WebMercatorViewport {
     // distance scales
     DistanceScales distanceScales;
 
-    public vec2 lngLatToWorld(vec2 lnglat) {
+    public vec4 transformVector(mat4 matrix, vec4 vector) {
+        vec4 result = vec4.transformMat4(vector, matrix);
+        result = vec4.scale(result, 1 / result.w);
+        return result;
+    }
+
+    /**
+     * Project xy (longitude, latitude) to world position using Web-Mercator-Projection
+     *
+     * @param lnglat
+     * @return
+     */
+    public vec2 lngLatToWorldPosition(vec2 lnglat) {
         if (lnglat.x < -180 || lnglat.x > 180) {
             return null;
         }
@@ -76,24 +88,43 @@ public class WebMercatorViewport {
         return new vec2(x, y);
     }
 
-    public vec3 projectPosition(vec3 xyz) {
-        vec2 xy = lngLatToWorld(xyz.xy());
+    /**
+     * Project xyz (longitude, latitude, altitude) to world position
+     *
+     * @param xyz
+     * @return
+     */
+    public vec3 lngLatToWorldPosition(vec3 xyz) {
+        vec2 xy = lngLatToWorldPosition(xyz.xy());
         double z = xyz.z * this.distanceScales.unitsPerMeter.z;
         return new vec3(xy.x, xy.y, z);
     }
 
-    public vec4 transformVector(mat4 matrix, vec4 vector) {
-        vec4 result = vec4.transformMat4(vector, matrix);
-        result = vec4.scale(result, 1 / result.w);
-        return result;
+    /**
+     * Project xyz (longitude, latitude, altitude) to clip space position
+     *
+     * @param xyz
+     * @return
+     */
+    public vec4 lngLatToClipspacePosition(vec3 xyz) {
+        vec3 wordPosition = lngLatToWorldPosition(xyz);
+        vec4 commonPosition = new vec4(wordPosition, 1.0);
+        return vec4.transformMat4(commonPosition, this.viewProjectionMatrix);
     }
 
-    public vec4 worldToPixels(vec3 position, mat4 pixelProjectionMatrix) {
+    /**
+     * Project world position to a screen pixel using given pixelProjectionMatrix
+     *
+     * @param position
+     * @param pixelProjectionMatrix
+     * @return
+     */
+    public vec4 worldPositionToScreenPixel(vec3 position, mat4 pixelProjectionMatrix) {
         return transformVector(pixelProjectionMatrix, new vec4(position, 1));
     }
 
     /**
-     * Projects xyz (possibly latitude and longitude) to pixel coordinates in window
+     * Projects xyz (longitude, latitude, altitude) to pixel coordinates in window
      * using viewport projection parameters
      * - [longitude, latitude] to [x, y]
      * - [longitude, latitude, Z] => [x, y, z]
@@ -103,9 +134,9 @@ public class WebMercatorViewport {
      * @param topLeft
      * @return
      */
-    public vec3 project(vec3 xyz, boolean topLeft) {
-        vec3 worldPosition = projectPosition(xyz);
-        vec4 coord = worldToPixels(worldPosition, pixelProjectionMatrix);
+    public vec3 lngLatToScreenPixel(vec3 xyz, boolean topLeft) {
+        vec3 worldPosition = lngLatToWorldPosition(xyz);
+        vec4 coord = worldPositionToScreenPixel(worldPosition, pixelProjectionMatrix);
         double x = coord.x;
         double y = topLeft? coord.y: this.height - coord.y;
         double z = coord.z;
@@ -199,7 +230,7 @@ public class WebMercatorViewport {
     private vec3 getCenterInWorld(double longitude, double latitude) {
 
         // Make a centered version of the matrix for projection modes without an offset
-        vec2 center2d = lngLatToWorld(new vec2(longitude, latitude));
+        vec2 center2d = lngLatToWorldPosition(new vec2(longitude, latitude));
         vec3 center = new vec3(center2d.x, center2d.y, 0);
 
         return center;

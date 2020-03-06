@@ -8,5 +8,6 @@ public class DeckGLRendererV2Test {
         rendererV2.test_project_position();
         rendererV2.test_project_common_position_to_clipspace();
         rendererV2.test_web_mercator_vewiport_project();
+        rendererV2.test_different_viewports_effects_on_clipspace_positions();
     }
 }

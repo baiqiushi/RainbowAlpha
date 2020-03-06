@@ -246,6 +246,8 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
           //   moduleManager.publishEvent(moduleManager.EVENT.FINISH_ACTION, {});
           // }
           moduleManager.publishEvent(moduleManager.EVENT.CHANGE_ZOOM_LEVEL, {zoom: $scope.map.getZoom()});
+
+          console.log("viewport changed to: center = " + JSON.stringify($scope.map.getCenter()) + ", zoom = " + $scope.map.getZoom());
         });
 
         moduleManager.subscribeEvent(moduleManager.EVENT.CHANGE_MODE, function(e) {

@@ -417,7 +417,7 @@ public class DeckGLRendererV2 {
 
     public void test_project_position() {
         vec3 lnglat = new vec3(-118.26517425999998, 34.04450895999999, 0.0);
-        vec3 expected_projected_position = new vec3(this.viewport.lngLatToWorld(lnglat.xy()), 0.0);
+        vec3 expected_projected_position = new vec3(this.viewport.lngLatToWorldPosition(lnglat.xy()), 0.0);
         vec3 projected_position = project_position(lnglat);
         double epsilon = 1e-4;
         boolean succeed = true;
@@ -473,7 +473,7 @@ public class DeckGLRendererV2 {
 
     public void test_web_mercator_vewiport_project() {
         vec3 lnglat = new vec3(-118.26517425999998, 34.04450895999999, 0.0);
-        vec3 screen_pixel = this.viewport.project(lnglat, true);
+        vec3 screen_pixel = this.viewport.lngLatToScreenPixel(lnglat, true);
         vec3 expected_screen_pixel = new vec3(710.4051284195557,566.6119216363259,0.9985865724381626);
         double epsilon = 1e-4;
         boolean succeed = true;
@@ -495,5 +495,75 @@ public class DeckGLRendererV2 {
             System.err.println("[test_web_mercator_vewiport_project] expected_screen_pixel = " + expected_screen_pixel);
             System.err.println("[test_web_mercator_vewiport_project] screen_pixel = " + screen_pixel);
         }
+    }
+
+    public void test_different_viewports_effects_on_clipspace_positions() {
+        vec3 lnglat = new vec3(-118.26517425999998, 34.04450895999999, 0.0);
+        System.out.println("[test_different_viewports_effects_on_clipspace_positions] lnglat = " + lnglat);
+
+        // view port #1 parameters
+        int width1 = 1920;
+        int height1 = 978;
+        double latitude1 = 39.50404070558415;
+        double longitude1 = -96.328125;
+        int zoom1 = 3;
+
+        Map<String, Object> viewportOpts = new HashMap<>();
+        viewportOpts.put("width", width1);
+        viewportOpts.put("height", height1);
+        viewportOpts.put("latitude", latitude1);
+        viewportOpts.put("longitude", longitude1);
+        viewportOpts.put("zoom", zoom1);
+        viewportOpts.put("pitch", 0.0);
+        viewportOpts.put("bearing", 0.0);
+        viewportOpts.put("orthographic", false);
+
+        WebMercatorViewport viewport1 = new WebMercatorViewport(viewportOpts);
+
+        vec3 center1 = new vec3(longitude1, latitude1, 0.0);
+        vec4 clipspaceCenter1 = viewport1.lngLatToClipspacePosition(center1);
+        System.out.println("[test_different_viewports_effects_on_clipspace_positions] viewport#1 center position = " + clipspaceCenter1);
+        vec4 clipspacePosition1 = viewport1.lngLatToClipspacePosition(lnglat);
+        System.out.println("[test_different_viewports_effects_on_clipspace_positions] viewport#1 clipspace position = " + clipspacePosition1);
+
+        // view port #2 parameters
+        double latitude2 = 32.10118973232094;
+        double longitude2 = -109.248046875;
+
+        viewportOpts.put("latitude", latitude2);
+        viewportOpts.put("longitude", longitude2);
+
+        WebMercatorViewport viewport2 = new WebMercatorViewport(viewportOpts);
+        vec3 center2 = new vec3(longitude2, latitude2, 0.0);
+        vec4 clipspaceCenter2 = viewport2.lngLatToClipspacePosition(center2);
+        System.out.println("[test_different_viewports_effects_on_clipspace_positions] viewport#2 center position = " + clipspaceCenter2);
+        vec4 clipspacePosition2 = viewport2.lngLatToClipspacePosition(lnglat);
+        System.out.println("[test_different_viewports_effects_on_clipspace_positions] viewport#2 clipspace position = " + clipspacePosition2);
+
+        // view port #3 parameters
+        int width2 = 1394;
+        int height2 = 834;
+
+        viewportOpts.put("width", width2);
+        viewportOpts.put("height", height2);
+        viewportOpts.put("latitude", latitude1);
+        viewportOpts.put("longitude", longitude1);
+
+        WebMercatorViewport viewport3 = new WebMercatorViewport(viewportOpts);
+        vec4 clipspacePosition3 = viewport3.lngLatToClipspacePosition(lnglat);
+        System.out.println("[test_different_viewports_effects_on_clipspace_positions] viewport#3 clipspace position = " + clipspacePosition3);
+
+        // view port #4 parameters
+        int zoom4 = 5;
+
+        viewportOpts.put("width", width1);
+        viewportOpts.put("height", height1);
+        viewportOpts.put("latitude", latitude1);
+        viewportOpts.put("longitude", longitude1);
+        viewportOpts.put("zoom", zoom4);
+
+        WebMercatorViewport viewport4 = new WebMercatorViewport(viewportOpts);
+        vec4 clipspacePosition4 = viewport4.lngLatToClipspacePosition(lnglat);
+        System.out.println("[test_different_viewports_effects_on_clipspace_positions] viewport#4 clipspace position = " + clipspacePosition4);
     }
 }
