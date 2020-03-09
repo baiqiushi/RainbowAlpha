@@ -433,7 +433,7 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
         for (let i = 0; i < $scope.actionTimings.length; i ++) {
           output += $scope.actions[i].zoom + ",    " +
             $scope.actionTimings[i].serverTime + ",    " +
-            $scope.actionTimings[i].treeCutTime + ",    " +
+            $scope.actionTimings[i].treeTime + ",    " +
             $scope.actionTimings[i].aggregateTime + ",    " +
             $scope.actionTimings[i].networkTime + ",    " +
             $scope.actionTimings[i].renderTime + "\n";
@@ -547,18 +547,18 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
         console.log(JSON.stringify(response));
 
         const serverTime = response.totalTime;
-        const treeCutTime = response.treeCutTime;
+        const treeTime = response.treeTime;
         const aggregateTime = response.aggregateTime;
         const networkTime = queryTime - serverTime;
         console.log("===== query time =====");
         console.log("serverTime: " + serverTime + " seconds.");
-        console.log("treeTime: " + treeCutTime + " seconds.");
+        console.log("treeTime: " + treeTime + " seconds.");
         console.log("aggregateTime: " + aggregateTime + " seconds.");
         console.log("networkTime: " + networkTime + " seconds.");
         if ($scope.timeActions) {
           $scope.actionTime = {
             serverTime: serverTime,
-            treeCutTime: treeCutTime,
+            treeTime: treeTime,
             aggregateTime: aggregateTime,
             networkTime: networkTime
           };
