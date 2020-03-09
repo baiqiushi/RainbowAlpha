@@ -1,10 +1,6 @@
-package util;
+package model;
 
 public interface I2DPoint {
-    int getId();
-
-    void setId(int _id);
-
     double getX();
 
     double getY();

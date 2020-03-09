@@ -1,5 +1,7 @@
 package util;
 
+import model.I2DPoint;
+
 import java.util.List;
 
 public interface I2DIndex<PointType> {

@@ -176,9 +176,9 @@ angular.module("clustermap.console", ["clustermap.common", "vtortola.ng-terminal
           $scope.$broadcast('terminal-output', {
             output: true,
             text: [
-              "distance [clusterKey] [zoom] [point1_id] [point2_id]",
+              "distance [key] [zoom] [point1_id] [point2_id]",
               "  calculate distance between point1 and point2 under zoom level in cluster",
-              "  - clusterKey: String, name/key of the cluster",
+              "  - key: String, name/key of the cluster",
               "  - zoom: int",
               "  - point1_id: int",
               "  - point2_id: int"
@@ -201,9 +201,9 @@ angular.module("clustermap.console", ["clustermap.common", "vtortola.ng-terminal
           $scope.$broadcast('terminal-output', {
             output: true,
             text: [
-              "distance [clusterKey] [zoom] [point1_id] [point2_id]",
+              "distance [key] [zoom] [point1_id] [point2_id]",
               "  calculate distance between point1 and point2 under zoom level in cluster",
-              "  - clusterKey: String, name/key of the cluster",
+              "  - key: String, name/key of the cluster",
               "  - zoom: int",
               "  - point1_id: int",
               "  - point2_id: int",

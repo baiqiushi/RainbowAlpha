@@ -1,17 +1,19 @@
 package algorithms;
 
 import javafx.util.Pair;
-import model.Cluster;
 import model.Point;
-import model.PointTuple;
+import util.BinaryMessageBuilder;
 import util.Constants;
+import util.MyTimer;
 import util.render.DeckGLRenderer;
 import util.render.IRenderer;
 import util.MyMemory;
 
 import java.util.*;
 
-public class GQuadTreeAggregator extends SuperCluster {
+import static util.Mercator.*;
+
+public class GQuadTreeAggregator implements IAlgorithm {
 
     public static double highestLevelNodeDimension;
     // resolution of each node (similar to a tile in map systems), e.g. 512
@@ -372,6 +374,7 @@ public class GQuadTreeAggregator extends SuperCluster {
     }
 
     QuadTree quadTree;
+    int totalNumberOfPoints = 0;
     int totalStoredNumberOfPoints = 0;
     static long nodesCount = 0; // count quad-tree nodes
     static int lowestLevelForQuery = Integer.MAX_VALUE; // the lowest level of range searching for a query
@@ -384,15 +387,13 @@ public class GQuadTreeAggregator extends SuperCluster {
     Map<String, Double> timing;
     //-Timing-//
 
-    public GQuadTreeAggregator(int _minZoom, int _maxZoom, int resX, int resY) {
-        this.minZoom = _minZoom;
-        this.maxZoom = _maxZoom;
+    public GQuadTreeAggregator() {
         this.quadTree = new QuadTree();
 
         oneNodeResolution = Constants.TILE_RESOLUTION;
 
         // zoom level 0 is fixed with dimension 1.0
-        highestLevelNodeDimension = 1.0 / Math.pow(2, this.maxZoom);
+        highestLevelNodeDimension = 1.0 / Math.pow(2, Constants.MAX_ZOOM);
 
         renderer = new DeckGLRenderer(Constants.RADIUS_IN_PIXELS);
 
@@ -405,25 +406,27 @@ public class GQuadTreeAggregator extends SuperCluster {
         MyMemory.printMemory();
     }
 
-    public void load(List<PointTuple> points) {
-        System.out.println("General QuadTree Aggregator loading " + points.size() + " points ... ...");
-        long start = System.nanoTime();
+    public void load(List<Point> points) {
+        System.out.println("[General QuadTree Aggregator] loading " + points.size() + " points ... ...");
+
+        MyTimer.startTimer();
         this.totalNumberOfPoints += points.size();
         int count = 0;
         int skip = 0;
-        for (PointTuple point: points) {
-            if (this.quadTree.insert(0.5, 0.5, 0.5,
-                    createPoint(point.getX(), point.getY(), point.getId()), renderer, 0))
+        for (Point point: points) {
+            if (this.quadTree.insert(0.5, 0.5, 0.5, lngLatToXY(point), renderer, 0))
                 count ++;
             else
                 skip ++;
         }
         this.totalStoredNumberOfPoints += count;
-        long end = System.nanoTime();
-        System.out.println("General QuadTree Aggregator inserted " + count + " points and skipped " + skip + " points.");
-        if (keepTiming) timing.put("total", timing.get("total") + (double) (end - start) / 1000000000.0);
-        System.out.println("General QuadTree Aggregator loading is done!");
-        System.out.println("Loading time: " + (double) (end - start) / 1000000000.0 + " seconds.");
+        MyTimer.stopTimer();
+        double loadTime = MyTimer.durationSeconds();
+
+        System.out.println("[General QuadTree Aggregator] inserted " + count + " points and skipped " + skip + " points.");
+        if (keepTiming) timing.put("total", timing.get("total") + loadTime);
+        System.out.println("[General QuadTree Aggregator] loading is done!");
+        System.out.println("[General QuadTree Aggregator] loading time: " + loadTime + " seconds.");
         if (keepTiming) this.printTiming();
 
         MyMemory.printMemory();
@@ -439,46 +442,20 @@ public class GQuadTreeAggregator extends SuperCluster {
         //-DEBUG-//
     }
 
-    protected Point createPoint(double _x, double _y, int _id) {
-        return new Point(lngX(_x), latY(_y), _id);
-    }
+    public byte[] answerQuery(double lng0, double lat0, double lng1, double lat1, int zoom, int resX, int resY) {
+        MyTimer.startTimer();
+        System.out.println("[General QuadTree Aggregator] is answering query Q = { range: [" + lng0 + ", " + lat0 + "] ~ [" +
+                lng1 + ", " + lat1 + "], resolution: [" + resX + " x " + resY + "], zoom: " + zoom + " } ...");
 
-    /**
-     * Get an array of Clusters for given visible region and zoom level,
-     *     then run tree-cut algorithm to choose a better subset of clusters to return
-     *
-     * @param x0 -
-     * @param y0 - (x0, y0) is the southwest corner of the query region
-     * @param x1 -
-     * @param y1 - (x1, y1) is the northeast corner of the query region
-     * @param zoom
-     * @param treeCut
-     * @param measure
-     * @param pixels
-     * @param bipartite
-     * @param resX
-     * @param resY
-     * @return
-     */
-    public Cluster[] getClusters(double x0, double y0, double x1, double y1, int zoom, boolean treeCut, String measure, double pixels, boolean bipartite, int resX, int resY) {
-        System.out.println("[General QuadTree Aggregator] getting clusters for given range [" + x0 + ", " + y0 + "] ~ [" +
-                x1 + ", " + y1 + "] and resolution [" + resX + " x " + resY + "]...");
-
-        long start = System.nanoTime();
-        double iX0 = lngX(x0);
-        double iY0 = latY(y0);
-        double iX1 = lngX(x1);
-        double iY1 = latY(y1);
-        //double pixelScale = Math.min((iX1 - iX0) / resX, (iY0 - iY1) / resY);
+        double iX0 = lngX(lng0);
+        double iY0 = latY(lat0);
+        double iX1 = lngX(lng1);
+        double iY1 = latY(lat1);
         double pixelScale = 1.0 / 256 / Math.pow(2, zoom);
         double rcX = (iX0 + iX1) / 2;
         double rcY = (iY0 + iY1) / 2;
         double rhalfWidth = (iX1 - iX0) / 2;
         double rhalfHeight = (iY0 - iY1) / 2;
-
-        if (treeCut) {
-            pixelScale = pixelScale * pixels;
-        }
 
         System.out.println("[General QuadTree Aggregator] starting range search on QuadTree with: \n" +
                 "range = [(" + rcX + ", " + rcY + "), " + rhalfWidth + ", " + rhalfHeight + "] ; \n" +
@@ -489,21 +466,41 @@ public class GQuadTreeAggregator extends SuperCluster {
         highestLevelForQuery = 0;
         highestPixelScale = 0.0;
 
+        MyTimer.startTimer();
         List<Point> points = this.quadTree.range(0.5, 0.5, 0.5,
                 rcX, rcY, rhalfWidth, rhalfHeight, pixelScale, 0);
-        List<Cluster> results = new ArrayList<>();
-        for (Point point: points) {
-            Cluster cluster = new Cluster(xLng(point.getX()), yLat(point.getY()), point.getId());
-            results.add(cluster);
+        MyTimer.stopTimer();
+        double treeTime = MyTimer.durationSeconds();
+
+        MyTimer.temporaryTimer.put("treeTime", treeTime);
+        System.out.println("[General QuadTree Aggregator] tree search got " + points.size() + " data points.");
+        System.out.println("[General QuadTree Aggregator] tree search time: " + treeTime + " seconds.");
+
+        // build binary result message
+        MyTimer.startTimer();
+        BinaryMessageBuilder messageBuilder = new BinaryMessageBuilder();
+        double lng, lat;
+        int resultSize = 0;
+        for (Point point : points) {
+            lng = xLng(point.getX());
+            lat = yLat(point.getY());
+            messageBuilder.add(lng, lat);
+            resultSize ++;
         }
-        long end = System.nanoTime();
-        double totalTime = (double) (end - start) / 1000000000.0;
-        System.out.println("[General QuadTree Aggregator] getClusters time: " + totalTime + " seconds.");
+        MyTimer.stopTimer();
+        double buildBinaryTime = MyTimer.durationSeconds();
+        MyTimer.temporaryTimer.put("aggregateTime", buildBinaryTime);
+
+        System.out.println("[General QuadTree Aggregator] build binary result with  " + resultSize + " points.");
+        System.out.println("[General QuadTree Aggregator] build binary result time: " + buildBinaryTime + " seconds.");
+
+        MyTimer.stopTimer();
+        System.out.println("[General QuadTree Aggregator] answer query total time: " + MyTimer.durationSeconds() + " seconds.");
         System.out.println("[General QuadTree Aggregator] lowest level for this query: " + lowestLevelForQuery);
         System.out.println("[General QuadTree Aggregator] highest level for this query: " + highestLevelForQuery);
         System.out.println("[General QuadTree Aggregator] lowest pixelScale for this query: " + lowestPixelScale);
         System.out.println("[General QuadTree Aggregator] highest pixelScale for this query: " + highestPixelScale);
-        return results.toArray(new Cluster[results.size()]);
+        return messageBuilder.getBuffer();
     }
 
     private void printTiming() {

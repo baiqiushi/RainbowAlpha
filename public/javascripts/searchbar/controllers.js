@@ -7,15 +7,7 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
                 moduleManager.publishEvent(moduleManager.EVENT.CHANGE_SEARCH_KEYWORD,
                     {
                       keyword: $scope.keyword,
-                      order: $scope.order,
-                      algorithm: $scope.algorithm,
-                      indexType: $scope.indexType,
-                      zoom: $scope.zoom,
-                      analysis: $scope.analysis,
-                      treeCut: $scope.treeCut,
-                      measure: $scope.measure,
-                      pixels: $scope.pixels,
-                      bipartite: $scope.bipartite
+                      algorithm: $scope.algorithm
                     });
             }
             // else {
@@ -39,49 +31,14 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
             $scope.disableSearchButton = false;
         });
 
-        $scope.orders = ["original", "reverse", "spatial", "spatial-reverse"];
-        $scope.algorithms = ["SuperCluster", "SuperClusterInBatch", "iSuperCluster",
-          "AiSuperCluster", "BiSuperCluster", "LBiSuperCluster", "GQuadTreeAggregator", "QuadTreeAggregator",
-          "DataExplorer", "DataAggregator", "SBiSuperCluster"];
-        $scope.indexTypes = ["KDTree", "GridIndex"];
-        $scope.zooms = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
-        $scope.analysises = ["", "rand-index", "adjusted-rand-index"];
-        $scope.treeCut = false;
-        $scope.measures = ["max", "min", "avg"];
-        $scope.pixelsOptions = [0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2, 3, 4, 5, 10, 15, 20];
-        $scope.bipartite = false;
-        $scope.mwVisualizationTypes = ["cluster", "scatter", "heat"];
-        $scope.feVisualizationTypes = ["cluster", "scatter", "heat"];
+        $scope.algorithms = ["DataExplorer", "DataAggregator", "QuadTreeAggregator", "GQuadTreeAggregator"];
+        $scope.mwVisualizationTypes = ["scatter", "heat"];
+        $scope.feVisualizationTypes = ["scatter", "heat"];
         $scope.scatterTypes = ["gl-pixel", "gl-raster", "leaflet", "deck-gl"];
         $scope.recording = false;
         $scope.replaying = false;
 
         /** Left side controls */
-        //Zoom Shift Select
-        $scope.selectZoomShift = document.createElement("select");
-        $scope.selectZoomShift.title = "zoomShift";
-        $scope.selectZoomShift.style.position = 'fixed';
-        $scope.selectZoomShift.style.top = '90px';
-        $scope.selectZoomShift.style.left = '8px';
-        for (let i = 0; i <= 6; i ++) {
-          let option = document.createElement("option");
-          option.text = ""+ i;
-          $scope.selectZoomShift.add(option);
-        }
-        $scope.selectZoomShift.value = "0";
-        document.body.appendChild($scope.selectZoomShift);
-        $scope.selectZoomShift.addEventListener("change", function () {
-          moduleManager.publishEvent(moduleManager.EVENT.CHANGE_ZOOM_SHIFT,
-            {zoomShift: $scope.selectZoomShift.value});
-        });
-        $scope.selectZoomShiftLabel = document.createElement("label");
-        $scope.selectZoomShiftLabel.innerHTML = "Zoom Shift";
-        $scope.selectZoomShiftLabel.htmlFor ="zoomShift";
-        $scope.selectZoomShiftLabel.style.position = 'fixed';
-        $scope.selectZoomShiftLabel.style.top = '90px';
-        $scope.selectZoomShiftLabel.style.left = '45px';
-        document.body.appendChild($scope.selectZoomShiftLabel);
-
         /** Frontend mode */
         // Select for Scatter Types under Frontend Scatter mode
         $scope.addSelectFEScatterTypes = function() {
@@ -142,14 +99,14 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
               {feVisualizationType: $scope.selectFEVisualizationTypes.value});
             switch ($scope.selectFEVisualizationTypes.value) {
               case "scatter":
-                $scope.selectCircleRadius.value = "1";
-                moduleManager.publishEvent(moduleManager.EVENT.CHANGE_CIRCLE_RADIUS,
-                  {circleRadius: $scope.selectCircleRadius.value});
+                $scope.selectPointRadius.value = "1";
+                moduleManager.publishEvent(moduleManager.EVENT.CHANGE_POINT_RADIUS,
+                  {pointRadius: $scope.selectPointRadius.value});
                 break;
               case "heat":
-                $scope.selectCircleRadius.value = "20";
-                moduleManager.publishEvent(moduleManager.EVENT.CHANGE_CIRCLE_RADIUS,
-                  {circleRadius: $scope.selectCircleRadius.value});
+                $scope.selectPointRadius.value = "20";
+                moduleManager.publishEvent(moduleManager.EVENT.CHANGE_POINT_RADIUS,
+                  {pointRadius: $scope.selectPointRadius.value});
                 break;
             }
           });
@@ -220,6 +177,8 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
               {scatterType: $scope.selectMWScatterTypes.value});
           });
         };
+        // by default show it, since by default mode = "middleware", mwVisualizationType = "scatter";
+        $scope.addSelectMWScatterTypes();
         // only show it when mode is "middleware-scatter"
         moduleManager.subscribeEvent(moduleManager.EVENT.CHANGE_MW_VISUALIZATION_TYPE, function(e) {
           if (e.mwVisualizationType === "scatter") {
@@ -256,47 +215,15 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
             moduleManager.publishEvent(moduleManager.EVENT.CHANGE_MW_VISUALIZATION_TYPE,
               {mwVisualizationType: $scope.selectMWVisualizationTypes.value});
             switch ($scope.selectMWVisualizationTypes.value) {
-              case "cluster":
-                $scope.checkboxNumber.checked = true;
-                moduleManager.publishEvent(moduleManager.EVENT.CHANGE_NUMBER_IN_CIRCLE,
-                  {numberInCircle: $scope.checkboxNumber.checked});
-                $scope.treeCut = false;
-                break;
               case "scatter":
-                $scope.checkboxNumber.checked = false;
-                moduleManager.publishEvent(moduleManager.EVENT.CHANGE_NUMBER_IN_CIRCLE,
-                  {numberInCircle: $scope.checkboxNumber.checked});
-                $scope.checkboxColor.checked = false;
-                moduleManager.publishEvent(moduleManager.EVENT.CHANGE_COLOR_ENCODING,
-                  {colorEncoding: $scope.checkboxColor.checked});
-                $scope.selectCircleRadius.value = "1";
-                moduleManager.publishEvent(moduleManager.EVENT.CHANGE_CIRCLE_RADIUS,
-                  {circleRadius: $scope.selectCircleRadius.value});
-                $scope.checkboxScaleCircleRadius.checked = false;
-                moduleManager.publishEvent(moduleManager.EVENT.CHANGE_SCALE_CIRCLE_RADIUS,
-                  {scaleCircleRadius: $scope.checkboxScaleCircleRadius.checked});
-                $scope.treeCut = true;
-                $scope.measure = "max";
-                $scope.pixels = 1.0;
-                $scope.bipartite = false;
+                $scope.selectPointRadius.value = "1";
+                moduleManager.publishEvent(moduleManager.EVENT.CHANGE_POINT_RADIUS,
+                  {pointRadius: $scope.selectPointRadius.value});
                 break;
               case "heat":
-                $scope.checkboxNumber.checked = false;
-                moduleManager.publishEvent(moduleManager.EVENT.CHANGE_NUMBER_IN_CIRCLE,
-                  {numberInCircle: $scope.checkboxNumber.checked});
-                $scope.checkboxColor.checked = false;
-                moduleManager.publishEvent(moduleManager.EVENT.CHANGE_COLOR_ENCODING,
-                  {colorEncoding: $scope.checkboxColor.checked});
-                $scope.selectCircleRadius.value = "5";
-                moduleManager.publishEvent(moduleManager.EVENT.CHANGE_CIRCLE_RADIUS,
-                  {circleRadius: $scope.selectCircleRadius.value});
-                $scope.checkboxScaleCircleRadius.checked = false;
-                moduleManager.publishEvent(moduleManager.EVENT.CHANGE_SCALE_CIRCLE_RADIUS,
-                  {scaleCircleRadius: $scope.checkboxScaleCircleRadius.checked});
-                $scope.treeCut = true;
-                $scope.measure = "max";
-                $scope.pixels = 2.0;
-                $scope.bipartite = false;
+                $scope.selectPointRadius.value = "5";
+                moduleManager.publishEvent(moduleManager.EVENT.CHANGE_POINT_RADIUS,
+                  {pointRadius: $scope.selectPointRadius.value});
                 break;
             }
             $scope.search();
@@ -349,108 +276,31 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
         $scope.radioMiddlewareLabel.style.left = '24px';
         document.body.appendChild($scope.radioMiddlewareLabel);
 
-        // Checkbox for numbers in circles
-        $scope.checkboxNumber = document.createElement("input");
-        $scope.checkboxNumber.type = "checkbox";
-        $scope.checkboxNumber.id = "numberInCircle";
-        $scope.checkboxNumber.name = "numberInCircle";
-        $scope.checkboxNumber.checked = true;
-        $scope.checkboxNumber.style.position = 'fixed';
-        $scope.checkboxNumber.style.top = '140px';
-        $scope.checkboxNumber.style.left = '8px';
-        document.body.appendChild($scope.checkboxNumber);
-        $scope.checkboxNumber.addEventListener("change", function() {
-          moduleManager.publishEvent(moduleManager.EVENT.CHANGE_NUMBER_IN_CIRCLE,
-            {numberInCircle: this.checked});
-        });
-        $scope.checkboxNumberLabel = document.createElement("label");
-        $scope.checkboxNumberLabel.innerHTML = "Number in Circle";
-        $scope.checkboxNumberLabel.htmlFor = "numberInCircle";
-        $scope.checkboxNumberLabel.style.position = 'fixed';
-        $scope.checkboxNumberLabel.style.top = '140px';
-        $scope.checkboxNumberLabel.style.left = '24px';
-        document.body.appendChild($scope.checkboxNumberLabel);
-
-        // Checkbox for color encoding
-        $scope.checkboxColor = document.createElement("input");
-        $scope.checkboxColor.type = "checkbox";
-        $scope.checkboxColor.id = "colorEncoding";
-        $scope.checkboxColor.name = "colorEncoding";
-        $scope.checkboxColor.checked = true;
-        $scope.checkboxColor.style.position = 'fixed';
-        $scope.checkboxColor.style.top = '155px';
-        $scope.checkboxColor.style.left = '8px';
-        document.body.appendChild($scope.checkboxColor);
-        $scope.checkboxColor.addEventListener("change", function() {
-          moduleManager.publishEvent(moduleManager.EVENT.CHANGE_COLOR_ENCODING,
-            {colorEncoding: this.checked});
-        });
-        $scope.checkboxColorLabel = document.createElement("label");
-        $scope.checkboxColorLabel.innerHTML = "Color Encoding";
-        $scope.checkboxColorLabel.htmlFor = "colorEncoding";
-        $scope.checkboxColorLabel.style.position = 'fixed';
-        $scope.checkboxColorLabel.style.top = '155px';
-        $scope.checkboxColorLabel.style.left = '24px';
-        document.body.appendChild($scope.checkboxColorLabel);
-
-        // Circle Radius Select
-        $scope.selectCircleRadius = document.createElement("select");
-        $scope.selectCircleRadius.title = "circleRadius";
-        $scope.selectCircleRadius.style.position = 'fixed';
-        $scope.selectCircleRadius.style.top = '175px';
-        $scope.selectCircleRadius.style.left = '8px';
-        for (let i = 20; i >=5; i -= 5) {
+        // Point Radius Select
+        $scope.selectPointRadius = document.createElement("select");
+        $scope.selectPointRadius.title = "pointRadius";
+        $scope.selectPointRadius.style.position = 'fixed';
+        $scope.selectPointRadius.style.top = '145px';
+        $scope.selectPointRadius.style.left = '8px';
+        for (let i = 0.5; i <=5 ; i += 0.5) {
           let option = document.createElement("option");
           option.text = "" + i;
-          $scope.selectCircleRadius.add(option);
+          $scope.selectPointRadius.add(option);
         }
-        for (let i = 4; i >=1 ; i -= 0.5) {
-          let option = document.createElement("option");
-          option.text = "" + i;
-          $scope.selectCircleRadius.add(option);
-        }
-        let option = document.createElement("option");
-        option.text = "0.5";
-        $scope.selectCircleRadius.add(option);
-        option = document.createElement("option");
-        option.text = "0.25";
-        $scope.selectCircleRadius.add(option);
 
-        $scope.selectCircleRadius.value = "20";
-        document.body.appendChild($scope.selectCircleRadius);
-        $scope.selectCircleRadius.addEventListener("change", function () {
-          moduleManager.publishEvent(moduleManager.EVENT.CHANGE_CIRCLE_RADIUS,
-            {circleRadius: $scope.selectCircleRadius.value});
+        $scope.selectPointRadius.value = "1";
+        document.body.appendChild($scope.selectPointRadius);
+        $scope.selectPointRadius.addEventListener("change", function () {
+          moduleManager.publishEvent(moduleManager.EVENT.CHANGE_POINT_RADIUS,
+            {pointRadius: $scope.selectPointRadius.value});
         });
-        $scope.selectCircleRadiusLabel = document.createElement("label");
-        $scope.selectCircleRadiusLabel.innerHTML = "Circle Radius";
-        $scope.selectCircleRadiusLabel.htmlFor ="circleRadius";
-        $scope.selectCircleRadiusLabel.style.position = 'fixed';
-        $scope.selectCircleRadiusLabel.style.top = '175px';
-        $scope.selectCircleRadiusLabel.style.left = '60px';
-        document.body.appendChild($scope.selectCircleRadiusLabel);
-
-        // Checkbox for scale circle radius
-        $scope.checkboxScaleCircleRadius = document.createElement("input");
-        $scope.checkboxScaleCircleRadius.type = "checkbox";
-        $scope.checkboxScaleCircleRadius.id = "scaleCircleRadius";
-        $scope.checkboxScaleCircleRadius.name = "scaleCircleRadius";
-        $scope.checkboxScaleCircleRadius.checked = false;
-        $scope.checkboxScaleCircleRadius.style.position = 'fixed';
-        $scope.checkboxScaleCircleRadius.style.top = '195px';
-        $scope.checkboxScaleCircleRadius.style.left = '8px';
-        document.body.appendChild($scope.checkboxScaleCircleRadius);
-        $scope.checkboxScaleCircleRadius.addEventListener("change", function() {
-          moduleManager.publishEvent(moduleManager.EVENT.CHANGE_SCALE_CIRCLE_RADIUS,
-            {scaleCircleRadius: this.checked});
-        });
-        $scope.checkboxScaleCircleRadiusLabel = document.createElement("label");
-        $scope.checkboxScaleCircleRadiusLabel.innerHTML = "Scale Circle Radius";
-        $scope.checkboxScaleCircleRadiusLabel.htmlFor = "scaleCircleRadius";
-        $scope.checkboxScaleCircleRadiusLabel.style.position = 'fixed';
-        $scope.checkboxScaleCircleRadiusLabel.style.top = '195px';
-        $scope.checkboxScaleCircleRadiusLabel.style.left = '24px';
-        document.body.appendChild($scope.checkboxScaleCircleRadiusLabel);
+        $scope.selectPointRadiusLabel = document.createElement("label");
+        $scope.selectPointRadiusLabel.innerHTML = "Point Radius";
+        $scope.selectPointRadiusLabel.htmlFor ="pointRadius";
+        $scope.selectPointRadiusLabel.style.position = 'fixed';
+        $scope.selectPointRadiusLabel.style.top = '145px';
+        $scope.selectPointRadiusLabel.style.left = '60px';
+        document.body.appendChild($scope.selectPointRadiusLabel);
 
         // Button for recording actions
         $scope.buttonRecord = document.createElement("button");
@@ -559,15 +409,7 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
                 '    <div id="myBar"></div>',
                 '  </div>',
                 '</form>',
-                '<label for="order">Order</label>&nbsp;<select id="order" ng-model="order" ng-options="x for x in orders" ng-init="order = orders[0]"></select>&nbsp;',
-                '<label for="algorithm">Algorithm</label>&nbsp;<select id="algorithm" ng-model="algorithm" ng-options="x for x in algorithms" ng-init="algorithm = algorithms[5]"></select>&nbsp;',
-                '<label for="indexType">IndexType</label>&nbsp;<select id="indexType" ng-model="indexType" ng-options="x for x in indexTypes" ng-init="indexType = indexTypes[0]"></select>&nbsp;',
-                '<label for="zoom">Zoom</label>&nbsp;<select id="zoom" ng-model="zoom" ng-options="x for x in zooms" ng-init="zoom = zooms[0]"></select>&nbsp;',
-                '<label for="analysis">Analysis</label>&nbsp;<select id="analysis" ng-model="analysis" ng-options="x for x in analysises" ng-init="analysis = analysises[0]"></select>&nbsp;',
-                '<label for="treeCut">Tree-Cut</label>&nbsp;<input id="treeCut" type="checkbox" ng-model="treeCut"></input>&nbsp;',
-                '<label for="measure">Measure</label>&nbsp;<select id="measure" ng-model="measure" ng-options="x for x in measures" ng-init="measure = measures[0]"></select>&nbsp;',
-                '<label for="pixels">Pixels</label>&nbsp;<select id="pixels" ng-model="pixels" ng-options="x for x in pixelsOptions" ng-init="pixels = pixelsOptions[6]"></select>&nbsp;',
-                '<label for="bipartite">Bipartite</label>&nbsp;<input id="bipartite" type="checkbox" ng-model="bipartite"></input>&nbsp;'
+                '<label for="algorithm">Algorithm</label>&nbsp;<select id="algorithm" ng-model="algorithm" ng-options="x for x in algorithms" ng-init="algorithm = algorithms[0]"></select>&nbsp;'
             ].join('')
         };
     });

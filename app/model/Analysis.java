@@ -5,8 +5,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Analysis {
     /**
-     * distance [clusterKey] [zoom] [point1_id] [point2_id]
-     *  - clusterKey: String
+     * distance [key] [zoom] [point1_id] [point2_id]
+     *  - key: String
      *  - zoom: int
      *  - point1_id: int
      *  - point2_id: int

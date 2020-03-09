@@ -1,22 +1,17 @@
 package model;
 
-import util.I2DPoint;
-
 public class Point implements I2DPoint {
     double x;
     double y;
-    int id;
 
     public Point() {
         x = 0.0;
         y = 0.0;
-        id = -1;
     }
 
-    public Point(double _x, double _y, int _id) {
+    public Point(double _x, double _y) {
         x = _x;
         y = _y;
-        id = _id;
     }
 
     public double getX() {
@@ -56,29 +51,17 @@ public class Point implements I2DPoint {
     }
 
     public I2DPoint clone() {
-        I2DPoint copy = new Point(x, y, id);
+        I2DPoint copy = new Point(x, y);
         return copy;
     }
 
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("[");
-        sb.append(id);
-        sb.append(":");
         sb.append("(");
         sb.append(x);
         sb.append(",");
         sb.append(y);
         sb.append(")");
-        sb.append("]");
         return sb.toString();
-    }
-
-    public int getId() {
-        return this.id;
-    }
-
-    public void setId(int id) {
-        this.id = id;
     }
 }

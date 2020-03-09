@@ -1,6 +1,7 @@
 package util;
 
 import javafx.util.Pair;
+import model.I2DPoint;
 
 import java.util.*;
 
@@ -129,21 +130,13 @@ public class KDTree<PointType extends I2DPoint> implements I2DIndex<PointType> {
             PointType currentPoint = currentNode.getPoint();
             // hit
             if (currentPoint.equalsTo(point)) {
-                // if hit the node's point
-                if (currentPoint.getId() == point.getId() && !currentNode.deleted) {
-                    //clone currentPoint and make it a tombstone here
-                    PointType tombstone = (PointType) currentPoint.clone();
-                    currentNode.point = tombstone;
-                    currentNode.deleted = true;
+                // if still has duplicates, delete one from duplicates
+                if (currentNode.duplicates.isEmpty()) {
+                    currentNode.duplicates.remove(currentNode.duplicates.size() - 1);
                 }
-                // else hit the node's duplicate point
+                // else make it a tombstone here
                 else {
-                    for (Iterator<PointType> iter = currentNode.duplicates.iterator(); iter.hasNext();) {
-                        I2DPoint p = iter.next();
-                        if (p.getId() == point.getId()) {
-                            iter.remove();
-                        }
-                    }
+                    currentNode.deleted = true;
                 }
                 size --;
                 return;
@@ -319,56 +312,7 @@ public class KDTree<PointType extends I2DPoint> implements I2DIndex<PointType> {
 
     public void print() {
         System.out.println("=================== KDTree ===================");
-        Queue<Pair<Integer, Node>> queue = new LinkedList<>();
-        queue.add(new Pair<>(0, root));
-        int currentLevel = -1;
-        while (queue.size() > 0) {
-            Pair<Integer, Node> currentEntry = queue.poll();
-            int level = currentEntry.getKey();
-            Node currentNode = currentEntry.getValue();
-            if (level > currentLevel) {
-                System.out.println();
-                System.out.print("[" + level + "] ");
-                currentLevel = level;
-            }
-            System.out.print(currentNode.getPoint().getId());
-            if (!currentNode.getDuplicates().isEmpty()) {
-                System.out.print("[");
-                for (I2DPoint duplicate: currentNode.getDuplicates()) {
-                    System.out.print(duplicate.getId() + ",");
-                }
-            }
-            System.out.print(", ");
-            if (currentNode.left != null) {
-                queue.add(new Pair<>(level + 1, currentNode.left));
-            }
-            if (currentNode.right != null) {
-                queue.add(new Pair<>(level + 1, currentNode.right));
-            }
-        }
         System.out.println();
-    }
-
-    /**
-     * Copy paste the output to this link: http://www.webgraphviz.com/
-     */
-    public void printGraphViz() {
-        System.out.println("=================== KDTree ===================");
-        System.out.println("digraph kdtree {");
-        Queue<Node> queue = new LinkedList<>();
-        queue.add(root);
-        while (queue.size() > 0) {
-            Node node = queue.poll();
-            if (node.left != null) {
-                System.out.println("\"[" + node.align + "] " + node.getPoint().getId() + "\" -> \"[" + node.left.align + "] " + node.left.getPoint().getId() + "\"");
-                queue.add(node.left);
-            }
-            if (node.right != null) {
-                System.out.println("\"[" + node.align + "] " + node.getPoint().getId() + "\" -> \"[" + node.right.align + "] " + node.right.getPoint().getId() + "\"");
-                queue.add(node.right);
-            }
-        }
-        System.out.println("}");
     }
 
     public int size() {

@@ -164,10 +164,11 @@ public class DeckGLRendererV2 {
      *                    [i][j][k] = i * resY * 3 + j * 3 + k
      * @param resX
      * @param resY
-     * @param point
+     * @param lng
+     * @param lat
      * @return boolean - if render the point on given rendering does not change the result, return false; else return true;
      */
-    public boolean render(byte[] rendering, int resX, int resY, Point point) {
+    public boolean render(byte[] rendering, int resX, int resY, double lng, double lat) {
 
         //-DEBUG-//
         // compare the shader's project_position_to_clipspace with viewport's project result
@@ -219,7 +220,7 @@ public class DeckGLRendererV2 {
         //-DEBUG-//
 
         // 3) find clip-space positions of the circumscribed square corners
-        vec3 instancePositions = new vec3(point.getX(), point.getY(), 0);
+        vec3 instancePositions = new vec3(lng, lat, 0);
 
         //-DEBUG-//
 //        System.out.println("----> (instance positions) <----");

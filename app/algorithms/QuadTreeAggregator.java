@@ -1,14 +1,16 @@
 package algorithms;
 
-import model.Cluster;
 import model.Point;
-import model.PointTuple;
+import util.BinaryMessageBuilder;
 import util.Constants;
 import util.MyMemory;
+import util.MyTimer;
 
 import java.util.*;
 
-public class QuadTreeAggregator extends SuperCluster {
+import static util.Mercator.*;
+
+public class QuadTreeAggregator implements IAlgorithm {
 
     public static double highestResScale;
 
@@ -163,7 +165,7 @@ public class QuadTreeAggregator extends SuperCluster {
             // Terminate here, if this node's boundary is already smaller than resScale
             if (Math.max(nhalfWidth, nhalfHeight) * 2 <= resScale) {
                 // add this node center to result
-                pointsInRange.add(new Point(ncX, ncY, -1));
+                pointsInRange.add(new Point(ncX, ncY));
                 return pointsInRange;
             }
 
@@ -205,6 +207,8 @@ public class QuadTreeAggregator extends SuperCluster {
     double quadTreeCY;
     double quadTreeHalfWidth;
     double quadTreeHalfHeight;
+    int totalNumberOfPoints = 0;
+    int totalStoredNumberOfPoints = 0;
     static long nodesCount = 0; // count quad-tree nodes
 
     //-Timing-//
@@ -212,10 +216,7 @@ public class QuadTreeAggregator extends SuperCluster {
     Map<String, Double> timing;
     //-Timing-//
 
-    public QuadTreeAggregator(int _minZoom, int _maxZoom, int resX, int resY) {
-        this.minZoom = _minZoom;
-        this.maxZoom = _maxZoom;
-
+    public QuadTreeAggregator(int resX, int resY) {
         this.quadTreeCX = (Constants.MAX_X + Constants.MIN_X) / 2;
         this.quadTreeCY = (Constants.MAX_Y + Constants.MIN_Y) / 2;
         this.quadTreeHalfWidth = (Constants.MAX_X - Constants.MIN_X) / 2;
@@ -224,7 +225,7 @@ public class QuadTreeAggregator extends SuperCluster {
 
         double pixelWidth = (Constants.MAX_X - Constants.MIN_X) / resX;
         double pixelHeight = (Constants.MAX_Y - Constants.MIN_Y) / resY;
-        highestResScale = Math.min(pixelWidth / Math.pow(2, this.maxZoom - 4), pixelHeight / Math.pow(2, this.maxZoom - 4));
+        highestResScale = Math.min(pixelWidth / Math.pow(2, Constants.MAX_ZOOM - 4), pixelHeight / Math.pow(2, Constants.MAX_ZOOM - 4));
 
         // initialize the timing map
         if (keepTiming) {
@@ -235,90 +236,89 @@ public class QuadTreeAggregator extends SuperCluster {
         MyMemory.printMemory();
     }
 
-    public void load(List<PointTuple> points) {
-        System.out.println("QuadTree Aggregator loading " + points.size() + " points ... ...");
-        long start = System.nanoTime();
+    public void load(List<Point> points) {
+        System.out.println("[QuadTree Aggregator] loading " + points.size() + " points ... ...");
+
+        MyTimer.startTimer();
         int count = 0;
         int skip = 0;
-        for (PointTuple point: points) {
-            if (this.quadTree.insert(this.quadTreeCX, this.quadTreeCY, this.quadTreeHalfWidth, this.quadTreeHalfHeight,
-                    createPoint(point.getX(), point.getY(), point.getId())))
+        this.totalNumberOfPoints += points.size();
+        for (Point point: points) {
+            if (this.quadTree.insert(this.quadTreeCX, this.quadTreeCY, this.quadTreeHalfWidth, this.quadTreeHalfHeight, lngLatToXY(point)))
                 count ++;
             else
                 skip ++;
         }
-        this.totalNumberOfPoints += count;
-        long end = System.nanoTime();
-        System.out.println("QuadTree Aggregator inserted " + count + " points and skipped " + skip + " points.");
-        if (keepTiming) timing.put("total", timing.get("total") + (double) (end - start) / 1000000000.0);
-        System.out.println("QuadTree Aggregator loading is done!");
-        System.out.println("Loading time: " + (double) (end - start) / 1000000000.0 + " seconds.");
+        this.totalStoredNumberOfPoints += count;
+        MyTimer.stopTimer();
+        double loadTime = MyTimer.durationSeconds();
+
+        System.out.println("[QuadTree Aggregator] inserted " + count + " points and skipped " + skip + " points.");
+        if (keepTiming) timing.put("total", timing.get("total") + loadTime);
+        System.out.println("[QuadTree Aggregator] loading is done!");
+        System.out.println("[QuadTree Aggregator] loading time: " + loadTime + " seconds.");
         if (keepTiming) this.printTiming();
 
         MyMemory.printMemory();
 
         //-DEBUG-//
         System.out.println("==== Until now ====");
-        System.out.println("QuadTree has inserted " + this.totalNumberOfPoints + " points.");
-        System.out.println("QuadTree has generated " + nodesCount + " nodes.");
+        System.out.println("[QuadTree Aggregator] has processed " + this.totalNumberOfPoints + " points.");
+        System.out.println("[QuadTree Aggregator] has stored " + this.totalStoredNumberOfPoints + " points.");
+        System.out.println("[QuadTree Aggregator] has skipped " + skip + " points.");
+        System.out.println("[QuadTree Aggregator] has generated " + nodesCount + " nodes.");
         //-DEBUG-//
     }
 
-    protected Point createPoint(double _x, double _y, int _id) {
-        return new Point(lngX(_x), latY(_y), _id);
-    }
+    public byte[] answerQuery(double lng0, double lat0, double lng1, double lat1, int zoom, int resX, int resY) {
+        MyTimer.startTimer();
+        System.out.println("[QuadTree Aggregator] is answering query Q = { range: [" + lng0 + ", " + lat0 + "] ~ [" +
+                lng1 + ", " + lat1 + "], resolution: [" + resX + " x " + resY + "], zoom: " + zoom + " } ...");
 
-    /**
-     * Get an array of Clusters for given visible region and zoom level,
-     *     then run tree-cut algorithm to choose a better subset of clusters to return
-     *
-     * @param x0
-     * @param y0
-     * @param x1
-     * @param y1
-     * @param zoom
-     * @param treeCut
-     * @param measure
-     * @param pixels
-     * @param bipartite
-     * @param resX
-     * @param resY
-     * @return
-     */
-    public Cluster[] getClusters(double x0, double y0, double x1, double y1, int zoom, boolean treeCut, String measure, double pixels, boolean bipartite, int resX, int resY) {
-        System.out.println("[QuadTree Aggregator] getting clusters for given range [" + x0 + ", " + y0 + "] ~ [" +
-                x1 + ", " + y1 + "] and resolution [" + resX + " x " + resY + "]...");
-
-        long start = System.nanoTime();
-        double iX0 = lngX(x0);
-        double iY0 = latY(y0);
-        double iX1 = lngX(x1);
-        double iY1 = latY(y1);
+        double iX0 = lngX(lng0);
+        double iY0 = latY(lat0);
+        double iX1 = lngX(lng1);
+        double iY1 = latY(lat1);
         double resScale = Math.min((iX1 - iX0) / resX, (iY0 - iY1) / resY);
         double rcX = (iX0 + iX1) / 2;
         double rcY = (iY0 + iY1) / 2;
         double rhalfWidth = (iX1 - iX0) / 2;
         double rhalfHeight = (iY0 - iY1) / 2;
 
-        if (treeCut) {
-            resScale = resScale * pixels;
-        }
-
         System.out.println("[QuadTree Aggregator] starting range search on QuadTree with: \n" +
                 "range = [(" + rcX + ", " + rcY + "), " + rhalfWidth + ", " + rhalfHeight + "] ; \n" +
                 "resScale = " + resScale + ";");
 
+        MyTimer.startTimer();
         List<Point> points = this.quadTree.range(this.quadTreeCX, this.quadTreeCY, this.quadTreeHalfWidth, this.quadTreeHalfHeight,
                 rcX, rcY, rhalfWidth, rhalfHeight, resScale);
-        List<Cluster> results = new ArrayList<>();
-        for (Point point: points) {
-            Cluster cluster = new Cluster(xLng(point.getX()), yLat(point.getY()), point.getId());
-            results.add(cluster);
+        MyTimer.stopTimer();
+        double treeTime = MyTimer.durationSeconds();
+
+        MyTimer.temporaryTimer.put("treeTime", treeTime);
+        System.out.println("[QuadTree Aggregator] tree search got " + points.size() + " data points.");
+        System.out.println("[QuadTree Aggregator] tree search time: " + treeTime + " seconds.");
+
+        // build binary result message
+        MyTimer.startTimer();
+        BinaryMessageBuilder messageBuilder = new BinaryMessageBuilder();
+        double lng, lat;
+        int resultSize = 0;
+        for (Point point : points) {
+            lng = xLng(point.getX());
+            lat = yLat(point.getY());
+            messageBuilder.add(lng, lat);
+            resultSize ++;
         }
-        long end = System.nanoTime();
-        double totalTime = (double) (end - start) / 1000000000.0;
-        System.out.println("[QuadTree Aggregator] getClusters time: " + totalTime + " seconds.");
-        return results.toArray(new Cluster[results.size()]);
+        MyTimer.stopTimer();
+        double buildBinaryTime = MyTimer.durationSeconds();
+        MyTimer.temporaryTimer.put("aggregateTime", buildBinaryTime);
+        System.out.println("[QuadTree Aggregator] build binary result with  " + resultSize + " points.");
+        System.out.println("[QuadTree Aggregator] build binary result time: " + buildBinaryTime + " seconds.");
+
+        MyTimer.stopTimer();
+        System.out.println("[QuadTree Aggregator] answer query total time: " + MyTimer.durationSeconds() + " seconds.");
+        return messageBuilder.getBuffer();
     }
 
     private void printTiming() {

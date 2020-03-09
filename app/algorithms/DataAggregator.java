@@ -1,31 +1,27 @@
 package algorithms;
 
-import model.Cluster;
-import model.PointTuple;
+import model.Point;
 import util.*;
 import util.render.DeckGLRendererV2;
 
 import java.util.*;
 
-public class DataAggregator extends SuperCluster {
-    String indexType; // KDTree / GridIndex
+import static util.Mercator.*;
+
+public class DataAggregator implements IAlgorithm {
     String aggregator;
 
     I2DIndex index;
-    List<Cluster> points;
+    int totalNumberOfPoints = 0;
 
     //-Timing-//
     static final boolean keepTiming = true;
     Map<String, Double> timing;
     //-Timing-//
 
-    public DataAggregator(int _minZoom, int _maxZoom, String _indexType, String aggregator) {
-        this.minZoom = _minZoom;
-        this.maxZoom = _maxZoom;
-        this.indexType = _indexType;
+    public DataAggregator(String aggregator) {
         this.aggregator = aggregator;
-        this.index = IndexCreator.createIndex(indexType, 100);
-        this.points = new ArrayList<>();
+        this.index = new KDTree<>();
 
         // initialize the timing map
         if (keepTiming) {
@@ -36,82 +32,79 @@ public class DataAggregator extends SuperCluster {
         MyMemory.printMemory();
     }
 
-    public void load(List<PointTuple> points) {
-        System.out.println("Data Aggregator loading " + points.size() + " points ... ...");
+    public void load(List<Point> points) {
         this.totalNumberOfPoints += points.size();
-        long start = System.nanoTime();
-        for (PointTuple point: points) {
-            this.index.insert(createPointCluster(point.getX(), point.getY(), point.getId()));
+        System.out.println("[Data Aggregator] loading " + points.size() + " points ... ...");
+
+        MyTimer.startTimer();
+        for (Point point: points) {
+            this.index.insert(lngLatToXY(point));
         }
-        long end = System.nanoTime();
-        if (keepTiming) timing.put("total", timing.get("total") + (double) (end - start) / 1000000000.0);
-        System.out.println("Data Aggregator loading is done!");
-        System.out.println("Loading time: " + (double) (end - start) / 1000000000.0 + " seconds.");
+        MyTimer.stopTimer();
+        double loadTime = MyTimer.durationSeconds();
+
+        if (keepTiming) timing.put("total", timing.get("total") + loadTime);
+        System.out.println("[Data Aggregator] loading is done!");
+        System.out.println("[Data Aggregator] loading time: " + loadTime + " seconds.");
         if (keepTiming) this.printTiming();
 
         MyMemory.printMemory();
     }
 
     /**
-     * Get list of Clusters for given visible region and zoom level
+     * Get list of points references for given visible region
      *
-     * @param x0
-     * @param y0
-     * @param x1
-     * @param y1
+     * @param lng0
+     * @param lat0
+     * @param lng1
+     * @param lat1
      * @return
      */
-    private List<Cluster> getClusters(double x0, double y0, double x1, double y1) {
-        double minLng = ((x0 + 180) % 360 + 360) % 360 - 180;
-        double minLat = Math.max(-90, Math.min(90, y0));
-        double maxLng = x1 == 180 ? 180 : ((x1 + 180) % 360 + 360) % 360 - 180;
-        double maxLat = Math.max(-90, Math.min(90, y1));
+    private List<Point> getPoints(double lng0, double lat0, double lng1, double lat1) {
+        double minLng = ((lng0 + 180) % 360 + 360) % 360 - 180;
+        double minLat = Math.max(-90, Math.min(90, lat0));
+        double maxLng = lng1 == 180 ? 180 : ((lng1 + 180) % 360 + 360) % 360 - 180;
+        double maxLat = Math.max(-90, Math.min(90, lat1));
 
-        if (x1 - x0 >= 360) {
+        if (lng1 - lng0 >= 360) {
             minLng = -180;
             maxLng = 180;
         } else if (minLng > maxLng) {
-            List<Cluster> easternHem = this.getClusters(minLng, minLat, 180, maxLat);
-            List<Cluster> westernHem = this.getClusters(-180, minLat, maxLng, maxLat);
+            List<Point> easternHem = this.getPoints(minLng, minLat, 180, maxLat);
+            List<Point> westernHem = this.getPoints(-180, minLat, maxLng, maxLat);
             return concat(easternHem, westernHem);
         }
 
-        Cluster leftBottom = createPointCluster(minLng, maxLat);
-        Cluster rightTop = createPointCluster(maxLng, minLat);
-        List<Cluster> points = this.index.range(leftBottom, rightTop);
+        Point leftBottom = new Point(lngX(minLng), latY(maxLat));
+        Point rightTop = new Point(lngX(maxLng), latY(minLat));
+        List<Point> points = this.index.range(leftBottom, rightTop);
         return points;
     }
 
-    private List<Cluster> concat(List<Cluster> a, List<Cluster> b) {
+    private List<Point> concat(List<Point> a, List<Point> b) {
         a.addAll(b);
         return a;
     }
 
-    /**
-     * Get an array of Clusters for given visible region and zoom level,
-     *     then run tree-cut algorithm to choose a better subset of clusters to return
-     *
-     * @param x0
-     * @param y0
-     * @param x1
-     * @param y1
-     * @param zoom
-     * @param treeCut
-     * @param measure
-     * @param pixels
-     * @param bipartite
-     * @param resX
-     * @param resY
-     * @return
-     */
-    public Cluster[] getClusters(double x0, double y0, double x1, double y1, int zoom, boolean treeCut, String measure, double pixels, boolean bipartite, int resX, int resY) {
-        System.out.println("[Data Aggregator] getting clusters for given range [" + x0 + ", " + y0 + "] ~ [" +
-                x1 + ", " + y1 + "] and resolution [" + resX + " x " + resY + "]...");
+    public byte[] answerQuery(double lng0, double lat0, double lng1, double lat1, int zoom, int resX, int resY) {
+        MyTimer.startTimer();
+        System.out.println("[Data Aggregator] is answering query Q = { range: [" + lng0 + ", " + lat0 + "] ~ [" +
+                lng1 + ", " + lat1 + "], resolution: [" + resX + " x " + resY + "], zoom: " + zoom + " } ...");
+
         // get all data points
-        List<Cluster> allPoints = getClusters(x0, y0, x1, y1);
-        System.out.println("[Data Aggregator] got " + allPoints.size() + " raw data points. Now aggregating ...");
-        long start = System.nanoTime();
-        List<Cluster> aggPoints = new ArrayList<>();
+        MyTimer.startTimer();
+        List<Point> allPoints = getPoints(lng0, lat0, lng1, lat1);
+        MyTimer.stopTimer();
+        double treeTime = MyTimer.durationSeconds();
+        MyTimer.temporaryTimer.put("treeTime", treeTime);
+        System.out.println("[Data Aggregator] tree search got " + allPoints.size() + " raw data points.");
+        System.out.println("[Data Aggregator] tree search time: " + treeTime + " seconds.");
+
+        // do aggregation and build binary result message
+        MyTimer.startTimer();
+        BinaryMessageBuilder messageBuilder = new BinaryMessageBuilder();
+        double lng, lat;
+        int resultSize = 0;
         // deck-gl aggregator uses DeckGLRendererV2 to aggregate points into a small subset
         if (this.aggregator.equalsIgnoreCase("deck-gl")) {
             // 1) create an DeckGLRendererV2
@@ -119,12 +112,12 @@ public class DataAggregator extends SuperCluster {
             // 2) create a rendering with given resolution
             byte[] image = deckgl.createRendering(resX, resY);
             // 3) traverse all points to reduce those do not change the rendering effect
-            for (Cluster point: allPoints) {
-                Cluster cluster = point.clone();
-                cluster.setX(xLng(cluster.getX()));
-                cluster.setY(yLat(cluster.getY()));
-                if (deckgl.render(image, resX, resY, cluster)) {
-                    aggPoints.add(cluster);
+            for (Point point: allPoints) {
+                lng = xLng(point.getX());
+                lat = yLat(point.getY());
+                if (deckgl.render(image, resX, resY, lng, lat)) {
+                    messageBuilder.add(lng, lat);
+                    resultSize ++;
                 }
             }
         }
@@ -132,32 +125,35 @@ public class DataAggregator extends SuperCluster {
         else {
             // aggregate into a small set of aggregated points based on resolution (resX, resY)
             boolean[][] bitmap = new boolean[resX][resY];
-            double iX0 = lngX(x0);
-            double iY0 = latY(y0);
-            double iX1 = lngX(x1);
-            double iY1 = latY(y1);
+            double iX0 = lngX(lng0);
+            double iY0 = latY(lat0);
+            double iX1 = lngX(lng1);
+            double iY1 = latY(lat1);
             double deltaX = iX1 - iX0;
             double deltaY = iY1 - iY0;
-            for (Cluster point : allPoints) {
+            for (Point point : allPoints) {
                 // find pixel index of this point based on resolution resX * resY
                 int i = (int) Math.floor((point.getX() - iX0) * resX / deltaX);
                 int j = (int) Math.floor((point.getY() - iY0) * resY / deltaY);
                 // only add it into result when <i, j> is not in set
                 if (!bitmap[i][j]) {
                     bitmap[i][j] = true;
-                    Cluster cluster = point.clone();
-                    cluster.setX(xLng(cluster.getX()));
-                    cluster.setY(yLat(cluster.getY()));
-                    aggPoints.add(cluster);
+                    lng = xLng(point.getX());
+                    lat = yLat(point.getY());
+                    messageBuilder.add(lng, lat);
+                    resultSize ++;
                 }
             }
         }
-        long end = System.nanoTime();
-        double aggregateTime = (double) (end - start) / 1000000000.0;
-        MyTimer.temporaryTimer.put("aggregate", aggregateTime);
-        System.out.println("[Data Aggregator] after aggregation, reduced to " + aggPoints.size() + " points.");
+        MyTimer.stopTimer();
+        double aggregateTime = MyTimer.durationSeconds();
+        MyTimer.temporaryTimer.put("aggregateTime", aggregateTime);
+        System.out.println("[Data Aggregator] after aggregation, reduced to " + resultSize + " points.");
         System.out.println("[Data Aggregator] aggregation time: " + aggregateTime + " seconds.");
-        return aggPoints.toArray(new Cluster[aggPoints.size()]);
+
+        MyTimer.stopTimer();
+        System.out.println("[Data Aggregator] answer query total time: " + MyTimer.durationSeconds() + " seconds.");
+        return messageBuilder.getBuffer();
     }
 
     private void printTiming() {
