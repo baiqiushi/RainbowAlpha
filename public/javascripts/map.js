@@ -13,12 +13,36 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
 
     // store total pointsCount for "frontend" mode
     $scope.pointsCount = 0;
-    // timing for "frontend" mode
-    $scope.timings = [];
+
+    // timing for query
+    $scope.queryTimings = {
+      zoom: 4,
+      serverTime: 0.0,
+      treeTime: 0.0,
+      aggregateTime: 0.0,
+      networkTime: 0.0,
+      renderTime: 0.0,
+      resultSize: 0.0
+    };
     // timing for query
     $scope.queryStart = 0.0;
     // timing for rendering
     $scope.renderStart = 0.0;
+
+    $scope.printQueryTimings = function() {
+      console.log("-------- Query Timings (csv) --------");
+      console.log("zoom,    serverTime,    treeTime,    aggregateTime,    networkTime,    renderTime,    resultSize");
+      console.log($scope.queryTimings.zoom + ",    " +
+        $scope.queryTimings.serverTime + ",    " +
+        $scope.queryTimings.treeTime + ",    " +
+        $scope.queryTimings.aggregateTime + ",    " +
+        $scope.queryTimings.networkTime + ",    " +
+        $scope.queryTimings.renderTime + ",    " +
+        $scope.queryTimings.resultSize
+      );
+      console.log("-------------------------------------");
+    };
+
     // timing for actions
     $scope.timeActions = false;
     $scope.actionTime = {};
@@ -53,7 +77,7 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
       }
 
       if ($scope.map) {
-        $scope.query.zoom = $scope.map.getZoom() + $scope.zoomShift;
+        $scope.query.zoom = $scope.map.getZoom();
         $scope.query.bbox = [
           $scope.map.getBounds().getWest(),
           $scope.map.getBounds().getSouth(),
@@ -117,7 +141,6 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
 
       document.getElementById("myBar").style.width = "0%";
       $scope.pointsCount = 0;
-      $scope.timings = [];
     };
 
     $scope.sendCmd = function(id, keyword, commands) {
@@ -426,17 +449,18 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
 
       // handler for finish replay
       moduleManager.subscribeEvent(moduleManager.EVENT.FINISH_REPLAY, function(e) {
-        console.log("===== Actions timings (json) =====");
+        console.log("===== Actions queryTimings (json) =====");
         console.log(JSON.stringify($scope.actionTimings));
-        console.log("===== Actions timings (csv) =====");
-        let output = "zoom,    serverTime,    treeTime,    aggregateTime,    networkTime,    renderTime\n";
+        console.log("===== Actions queryTimings (csv) =====");
+        let output = "zoom,    serverTime,    treeTime,    aggregateTime,    networkTime,    renderTime,    resultSize\n";
         for (let i = 0; i < $scope.actionTimings.length; i ++) {
-          output += $scope.actions[i].zoom + ",    " +
+          output += $scope.actionTimings[i].zoom + ",    " +
             $scope.actionTimings[i].serverTime + ",    " +
             $scope.actionTimings[i].treeTime + ",    " +
             $scope.actionTimings[i].aggregateTime + ",    " +
             $scope.actionTimings[i].networkTime + ",    " +
-            $scope.actionTimings[i].renderTime + "\n";
+            $scope.actionTimings[i].renderTime + ",    " +
+            $scope.actionTimings[i].resultSize + "\n";
         }
         console.log(output);
         console.log("===========================");
@@ -589,7 +613,8 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
         response.result = {data: data};
         console.log("==== websocket received binary data ====");
         console.log(binaryData);
-        console.log("size = " + (headerSize + bitmapHeaderSize + resX * bitmapOneLineSize) / (1024.0 * 1024.0) + " MB.");
+        response.resultSize = (headerSize + bitmapHeaderSize + resX * bitmapOneLineSize) / (1024.0 * 1024.0);
+        console.log("size = " + response.resultSize + " MB.");
         return response;
       }
     };
@@ -625,21 +650,21 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
         console.log("===== websocket response =====");
         console.log(JSON.stringify(response));
 
-        const serverTime = response.totalTime;
-        const treeTime = response.treeTime;
-        const aggregateTime = response.aggregateTime;
-        const networkTime = queryTime - serverTime;
-        console.log("===== query time =====");
-        console.log("serverTime: " + serverTime + " seconds.");
-        console.log("treeTime: " + treeTime + " seconds.");
-        console.log("aggregateTime: " + aggregateTime + " seconds.");
-        console.log("networkTime: " + networkTime + " seconds.");
+        // keep notes of timings
+        $scope.queryTimings.zoom = $scope.query.zoom;
+        $scope.queryTimings.serverTime = response.totalTime;
+        $scope.queryTimings.treeTime = response.treeTime;
+        $scope.queryTimings.aggregateTime = response.aggregateTime;
+        $scope.queryTimings.networkTime = queryTime - response.totalTime;
+        $scope.queryTimings.resultSize = response.resultSize;
         if ($scope.timeActions) {
           $scope.actionTime = {
-            serverTime: serverTime,
-            treeTime: treeTime,
-            aggregateTime: aggregateTime,
-            networkTime: networkTime
+            zoom: $scope.queryTimings.zoom,
+            serverTime: $scope.queryTimings.serverTime,
+            treeTime: $scope.queryTimings.treeTime,
+            aggregateTime: $scope.queryTimings.aggregateTime,
+            networkTime: $scope.queryTimings.networkTime,
+            resultSize: $scope.queryTimings.resultSize
           };
         }
 
@@ -695,10 +720,10 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
 
       // timing for rendering
       let renderEnd = performance.now();
-      let renderTime = (renderEnd - $scope.renderStart) / 1000.0; // seconds
-      console.log("renderTime: " + renderTime + " seconds.");
+      $scope.queryTimings.renderTime = (renderEnd - $scope.renderStart) / 1000.0; // seconds
+      $scope.printQueryTimings();
       if ($scope.timeActions) {
-        $scope.actionTime.renderTime = renderTime;
+        $scope.actionTime.renderTime = $scope.queryTimings.renderTime;
         $scope.actionTimings.push($scope.actionTime);
       }
       if ($scope.replaying) {
@@ -811,10 +836,10 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
 
       // timing for rendering
       let renderEnd = performance.now();
-      let renderTime = (renderEnd - $scope.renderStart) / 1000.0; // seconds
-      console.log("renderTime: " + renderTime + " seconds.");
+      $scope.queryTimings.renderTime = (renderEnd - $scope.renderStart) / 1000.0; // seconds
+      $scope.printQueryTimings();
       if ($scope.timeActions) {
-        $scope.actionTime.renderTime = renderTime;
+        $scope.actionTime.renderTime = $scope.queryTimings.renderTime;
         $scope.actionTimings.push($scope.actionTime);
       }
       if ($scope.replaying) {
