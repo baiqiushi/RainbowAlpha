@@ -20,7 +20,21 @@ public class ForLoopBenchmark {
         double generateTime = MyTimer.durationSeconds();
         System.out.println("(1) Generated " + size / 1000000 + "M Point instances. Takes " + generateTime + " seconds.");
 
-        // generate a random indexing sequence to loop all points in the buffer
+        // (2) sequentially loop the list of Point instances, count how many have sum > 100.0;
+        MyTimer.startTimer();
+        int countOver100 = 0;
+        double sum = 0.0;
+        for (Point point: buffer) {
+            sum = point.getX() + point.getY();
+            if (sum > 100.0) {
+                countOver100 ++;
+            }
+        }
+        MyTimer.stopTimer();
+        double loopTime = MyTimer.durationSeconds();
+        System.out.println("(2) Sequentially looped " + size / 1000000 + "M Point instances, " + countOver100 + " of them has x+y>100. Takes " + loopTime + " seconds");
+
+        // (3) generate a random indexing sequence to loop all points in the buffer
         MyTimer.startTimer();
         List<Integer> indexes = new ArrayList<>();
         for (int i = 0; i < size; i ++) {
@@ -29,12 +43,12 @@ public class ForLoopBenchmark {
         Collections.shuffle(indexes);
         MyTimer.stopTimer();
         double shuffleTime = MyTimer.durationSeconds();
-        System.out.println("Shuffled indexes. Takes " + shuffleTime + " seconds.");
+        System.out.println("(3) Shuffled indexes. Takes " + shuffleTime + " seconds.");
 
-        // (2) loop the list of Point instances, count how many have sum > 100.0;
+        // (4) randomly loop the list of Point instances, count how many have sum > 100.0;
         MyTimer.startTimer();
-        int countOver100 = 0;
-        double sum = 0.0;
+        countOver100 = 0;
+        sum = 0.0;
         for (int i = 0; i < size; i ++) {
             Point point = buffer.get(indexes.get(i));
             sum = point.getX() + point.getY();
@@ -43,7 +57,7 @@ public class ForLoopBenchmark {
             }
         }
         MyTimer.stopTimer();
-        double loopTime = MyTimer.durationSeconds();
-        System.out.println("(2) Looped " + size / 1000000 + "M Point instances, " + countOver100 + " of them has x+y>100. Takes " + loopTime + " seconds");
+        loopTime = MyTimer.durationSeconds();
+        System.out.println("(4) Randomly looped " + size / 1000000 + "M Point instances, " + countOver100 + " of them has x+y>100. Takes " + loopTime + " seconds");
     }
 }
