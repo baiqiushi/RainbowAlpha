@@ -1,6 +1,7 @@
 package util;
 
 import static util.Constants.DOUBLE_BYTES;
+import static util.Constants.INT_BYTES;
 
 public class BinaryMessageBuilder {
 
@@ -9,18 +10,30 @@ public class BinaryMessageBuilder {
 
     /**
      * ---- header ----
-     * | HEADER_SIZE | ...
+     *  progress  totalTime  treeTime   aggTime  msgType
+     * | 4 BYTES | 8 BYTES | 8 BYTES | 8 BYTES | 4 BYTES |
      * ---- binary data payload ----
-     * lat              lng
-     * | DOUBLE_BYTES | DOUBLE_BYTES | ...(repeat)...
+     *   lat1      lng1      lat2      lng2      ...
+     * | 8 BYTES | 8 BYTES | 8 BYTES | 8 BYTES | ...
      */
     byte[] buffer;
     int capacity;
     int count;
+
     public BinaryMessageBuilder() {
         capacity = INIT_CAPACITY;
         buffer = new byte[Constants.HEADER_SIZE + (DOUBLE_BYTES + DOUBLE_BYTES) * INIT_CAPACITY];
         count = 0;
+
+        // tag msgType in the header
+        // binary message (0)
+        int msgType = 0;
+        // offset of msgType position in the header
+        int j = INT_BYTES + 3 * DOUBLE_BYTES;
+        buffer[j+0] = (byte)((msgType >> 24) & 0xff);
+        buffer[j+1] = (byte)((msgType >> 16) & 0xff);
+        buffer[j+2] = (byte)((msgType >>  8) & 0xff);
+        buffer[j+3] = (byte)((msgType >>  0) & 0xff);
     }
 
     public void add(double lng, double lat) {

@@ -25,7 +25,11 @@ public class Constants {
     // Message
     public static int DOUBLE_BYTES = 8;
     public static int INT_BYTES = 4;
-    public static int HEADER_SIZE = INT_BYTES + 3 * DOUBLE_BYTES;
+    // ---- header ----
+    //  progress  totalTime  treeTime   aggTime  msgType   binary data payload
+    // | 4 BYTES | 8 BYTES | 8 BYTES | 8 BYTES | 4 BYTES | ...
+    public static int HEADER_SIZE = INT_BYTES + 3 * DOUBLE_BYTES + INT_BYTES;
+    public static int MSG_TYPE = 0;
 
     public static int RADIUS_IN_PIXELS = 1;
 

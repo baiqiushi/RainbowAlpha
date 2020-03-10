@@ -100,6 +100,8 @@ public class Agent extends AbstractActor {
         Constants.DB_USERNAME = this.config.getString("db.username");
         Constants.DB_PASSWORD = this.config.getString("db.password");
         Constants.DB_TABLENAME = this.config.getString("db.tablename");
+
+        Constants.MSG_TYPE = this.config.getInt("message.type");
     }
 
     public static Props getProps() {
@@ -203,8 +205,8 @@ public class Agent extends AbstractActor {
 
     private void buildBinaryHeader(byte[] binaryData, int progress, double totalTime, double treeTime, double aggregateTime) {
         // construct final response
-        //  progress  totalTime  treeTime   aggTime   binary data payload
-        // | 4 BYTES | 8 BYTES | 8 BYTES | 8 BYTES | ...
+        //  progress  totalTime  treeTime   aggTime  msgType   binary data payload
+        // | 4 BYTES | 8 BYTES | 8 BYTES | 8 BYTES | 4 BYTES | ...
         // header 1: progress
         int j = 0;
         binaryData[j+0] = (byte)((progress >> 24) & 0xff);

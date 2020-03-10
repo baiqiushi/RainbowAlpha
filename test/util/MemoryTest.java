@@ -15,5 +15,9 @@ public class MemoryTest {
         System.out.println("lngX(180) = "  + lngX(180));
         System.out.println("latY(-90) = " + latY(-90));
         System.out.println("latY(90) = " + latY(90));
+
+        int j = 0;
+        int j1 = j / 8;
+        System.out.println("j1 = " + j1);
     }
 }

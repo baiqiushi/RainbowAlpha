@@ -478,41 +478,120 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
     };
 
     $scope.parseBinary = function(binaryData) {
-      // ---------------------------- data ----------------------------
-      //  progress  totalTime  treeTime  aggTime   binary data payload
-      // | 4 BYTES | 8 BYTES | 8 BYTES | 8 BYTES | ...
-      // ---- binary data payload ----
-      //    lat        lng
-      // | 8 BYTES | 8 BYTES | ...(repeat)...
+      // ---- header ----
+      //  progress  totalTime  treeTime  aggTime   msgType
+      // | 4 BYTES | 8 BYTES | 8 BYTES | 8 BYTES | 4 BYTES |
       let dv = new DataView(binaryData);
       let response = {};
-      let j = 0; // offset by bytes
-      response.progress = dv.getInt32(j);
-      j = j + 4;
-      response.totalTime = dv.getFloat64(j);
-      j = j + 8;
-      response.treeTime = dv.getFloat64(j);
-      j = j + 8;
-      response.aggregateTime = dv.getFloat64(j);
-      j = j + 8;
-      const headerSize = 4 + 8 + 8 + 8;
-      const recordSize = 8 + 8;
-      let dataLength = (dv.byteLength - headerSize) / recordSize;
-      let data = [];
-      for (let i = 0; i < dataLength; i ++) {
-        // current record's starting offset
-        j = headerSize + recordSize * i;
-        let record = [];
-        record.push(dv.getFloat64(j)); // lat
-        j = j + 8;
-        record.push(dv.getFloat64(j)); // lng
-        data.push(record);
+      let offset = 0; // offset by bytes
+      response.progress = dv.getInt32(offset);
+      offset = offset + 4;
+      response.totalTime = dv.getFloat64(offset);
+      offset = offset + 8;
+      response.treeTime = dv.getFloat64(offset);
+      offset = offset + 8;
+      response.aggregateTime = dv.getFloat64(offset);
+      offset = offset + 8;
+      response.msgType = dv.getInt32(offset);
+      offset = offset + 4;
+      const headerSize = 4 + 8 + 8 + 8 + 4;
+      // message type = binary
+      if (response.msgType == 0) {
+        // ---- binary data payload ----
+        //   lat1      lng1      lat2      lng2      ...
+        // | 8 BYTES | 8 BYTES | 8 BYTES | 8 BYTES | ...
+        const recordSize = 8 + 8;
+        let dataLength = (dv.byteLength - headerSize) / recordSize;
+        let data = [];
+        for (let i = 0; i < dataLength; i++) {
+          // current record's starting offset
+          offset = headerSize + recordSize * i;
+          let record = [];
+          record.push(dv.getFloat64(offset)); // lat
+          offset = offset + 8;
+          record.push(dv.getFloat64(offset)); // lng
+          data.push(record);
+        }
+        response.result = {data: data};
+        console.log("==== websocket received binary data ====");
+        console.log(binaryData);
+        console.log("size = " + (headerSize + dataLength * recordSize) / (1024.0 * 1024.0) + " MB.");
+        return response;
       }
-      response.result = {data: data};
-      console.log("==== websocket received binary data ====");
-      console.log(binaryData);
-      console.log("size = " + (headerSize + dataLength * recordSize) / (1024.0 * 1024.0) + " MB.");
-      return response;
+      // message type = bitmap
+      else if (response.msgType === 1) {
+        // ---- bitmap header ----
+        //   resX      resY      lng0      lat0      lng1      lat1
+        // | 4 BYTES | 4 BYTES | 8 BYTES | 8 BYTES | 8 BYTES | 8 BYTES |
+        // ---- bitmap data payload ----
+        //   i=0, j=0~_resY          i=1, j=0~_resY        ...
+        // | ceil(resY / 8) BYTES | ceil(resY / 8) BYTES | ...
+        const resX = dv.getInt32(offset);
+        offset = offset + 4;
+        const resY = dv.getInt32(offset);
+        offset = offset + 4;
+        const lng0 = dv.getFloat64(offset);
+        offset = offset + 8;
+        const lat0 = dv.getFloat64(offset);
+        offset = offset + 8;
+        const lng1 = dv.getFloat64(offset);
+        offset = offset + 8;
+        const lat1 = dv.getFloat64(offset);
+        offset = offset + 8;
+        const bitmapHeaderSize = 4 * 2 + 8 * 4;
+        const bitmapOneLineSize = Math.ceil(resY / 8.0);
+
+        // functions for mercator projection
+        function lngX(lng) {
+          return lng / 360 + 0.5;
+        }
+
+        function latY(lat) {
+          let sin = Math.sin(lat * Math.PI / 180);
+          let y = (0.5 - 0.25 * Math.log((1 + sin) / (1 - sin)) / Math.PI);
+          return y < 0 ? 0 : y > 1 ? 1 : y;
+        }
+
+        function xLng(x) {
+          return (x - 0.5) * 360;
+        }
+
+        function yLat(y) {
+          let y2 = (180 - y * 360) * Math.PI / 180;
+          return 360 * Math.atan(Math.exp(y2)) / Math.PI - 90;
+        }
+
+        const x0 = lngX(lng0);
+        const y0 = latY(lat0);
+        const x1 = lngX(lng1);
+        const y1 = latY(lat1);
+        const deltaX = x1 - x0;
+        const deltaY = y1 - y0;
+        let data = [];
+        for (let i = 0; i < resX; i ++) {
+          for (let j = 0; j < resY; j ++) {
+            let offset = headerSize + bitmapHeaderSize + i * bitmapOneLineSize; // line head
+            offset = offset + Math.floor(j / 8); // byte within the line
+            let byte = dv.getInt8(offset);
+            let pos = j % 8; // pos within byte
+            let shift = 7 - pos;
+            let bit = (byte >>> shift) & 1;
+            // point exists for pixel [i, j]
+            if (bit !== 0) {
+              let x = (i + 0.5) * deltaX / resX + x0;
+              let y = (j + 0.5) * deltaY / resY + y0;
+              let lng = xLng(x);
+              let lat = yLat(y);
+              data.push([lat, lng]);
+            }
+          }
+        }
+        response.result = {data: data};
+        console.log("==== websocket received binary data ====");
+        console.log(binaryData);
+        console.log("size = " + (headerSize + bitmapHeaderSize + resX * bitmapOneLineSize) / (1024.0 * 1024.0) + " MB.");
+        return response;
+      }
     };
 
     $scope.ws.onmessage = function(event) {
