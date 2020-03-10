@@ -7,8 +7,11 @@ import java.util.Collections;
 import java.util.List;
 
 public class ForLoopBenchmark {
-    public static void main(String[] agrs) {
+    public static void main(String[] args) {
         int size = 10000000; // 10M
+        if (args.length > 0) {
+            size = Integer.valueOf(args[0]);
+        }
 
         // (1) generate size Point instances and put into a List
         MyTimer.startTimer();
