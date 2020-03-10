@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class ForLoopTest {
+public class ForLoopBenchmark {
     public static void main(String[] agrs) {
         int size = 10000000; // 10M
 
