@@ -128,16 +128,16 @@ public class DataAggregator implements IAlgorithm {
             else {
                 // aggregate into a small set of aggregated points based on resolution (resX, resY)
                 boolean[][] bitmap = new boolean[resX][resY];
-                double iX0 = lngX(lng0);
-                double iY0 = latY(lat0);
-                double iX1 = lngX(lng1);
-                double iY1 = latY(lat1);
-                double deltaX = iX1 - iX0;
-                double deltaY = iY1 - iY0;
+                double x0 = lngX(lng0);
+                double y1 = latY(lat0);
+                double x1 = lngX(lng1);
+                double y0 = latY(lat1);
+                double deltaX = x1 - x0;
+                double deltaY = y1 - y0;
                 for (Point point : allPoints) {
                     // find pixel index of this point based on resolution resX * resY
-                    int i = (int) Math.floor((point.getX() - iX0) * resX / deltaX);
-                    int j = (int) Math.floor((point.getY() - iY0) * resY / deltaY);
+                    int i = (int) Math.floor((point.getX() - x0) * resX / deltaX);
+                    int j = (int) Math.floor((point.getY() - y0) * resY / deltaY);
                     // only add it into result when <i, j> is not in set
                     if (!bitmap[i][j]) {
                         bitmap[i][j] = true;
@@ -177,16 +177,16 @@ public class DataAggregator implements IAlgorithm {
             MyTimer.startTimer();
             // generate a bitmap based on resolution (resX, resY)
             boolean[][] bitmap = new boolean[resX][resY];
-            double iX0 = lngX(lng0);
-            double iY0 = latY(lat0);
-            double iX1 = lngX(lng1);
-            double iY1 = latY(lat1);
-            double deltaX = iX1 - iX0;
-            double deltaY = iY1 - iY0;
+            double x0 = lngX(lng0);
+            double y1 = latY(lat0);
+            double x1 = lngX(lng1);
+            double y0 = latY(lat1);
+            double deltaX = x1 - x0;
+            double deltaY = y1 - y0;
             for (Point point : allPoints) {
                 // find pixel index of this point based on resolution resX * resY
-                int i = (int) Math.floor((point.getX() - iX0) * resX / deltaX);
-                int j = (int) Math.floor((point.getY() - iY0) * resY / deltaY);
+                int i = (int) Math.floor((point.getX() - x0) * resX / deltaX);
+                int j = (int) Math.floor((point.getY() - y0) * resY / deltaY);
                 // set the bit to be true
                 bitmap[i][j] = true;
             }

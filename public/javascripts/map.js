@@ -586,9 +586,9 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
         }
 
         const x0 = lngX(lng0);
-        const y0 = latY(lat0);
+        const y1 = latY(lat0);
         const x1 = lngX(lng1);
-        const y1 = latY(lat1);
+        const y0 = latY(lat1);
         const deltaX = x1 - x0;
         const deltaY = y1 - y0;
         let data = [];
