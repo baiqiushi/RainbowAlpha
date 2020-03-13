@@ -99,9 +99,9 @@ public class DataAggregator implements IAlgorithm {
      * @param lng1
      * @param lat1
      * @param nodeHandler
-     * @return
+     * @return resultSize
      */
-    private void getPoints(double lng0, double lat0, double lng1, double lat1, I2DIndexNodeHandler nodeHandler) {
+    private int getPoints(double lng0, double lat0, double lng1, double lat1, I2DIndexNodeHandler nodeHandler) {
         double minLng = ((lng0 + 180) % 360 + 360) % 360 - 180;
         double minLat = Math.max(-90, Math.min(90, lat0));
         double maxLng = lng1 == 180 ? 180 : ((lng1 + 180) % 360 + 360) % 360 - 180;
@@ -111,14 +111,15 @@ public class DataAggregator implements IAlgorithm {
             minLng = -180;
             maxLng = 180;
         } else if (minLng > maxLng) {
-            this.getPoints(minLng, minLat, 180, maxLat, nodeHandler);
-            this.getPoints(-180, minLat, maxLng, maxLat, nodeHandler);
-            return;
+            int resultSize = 0;
+            resultSize += this.getPoints(minLng, minLat, 180, maxLat, nodeHandler);
+            resultSize += this.getPoints(-180, minLat, maxLng, maxLat, nodeHandler);
+            return resultSize;
         }
 
         Point leftBottom = new Point(lngX(minLng), latY(maxLat));
         Point rightTop = new Point(lngX(maxLng), latY(minLat));
-        this.index.range(leftBottom, rightTop, nodeHandler);
+        return this.index.range(leftBottom, rightTop, nodeHandler);
     }
 
     public byte[] answerQuery(double lng0, double lat0, double lng1, double lat1, int zoom, int resX, int resY) {
@@ -201,13 +202,13 @@ public class DataAggregator implements IAlgorithm {
             MyTimer.startTimer();
 
             DataAggregatorNodeHandler nodeHandler = new DataAggregatorNodeHandler(resX, resY, lng0, lat0, lng1, lat1);
-            getPoints(lng0, lat0, lng1, lat1, nodeHandler);
+            int resultSize = getPoints(lng0, lat0, lng1, lat1, nodeHandler);
             boolean[][] bitmap = nodeHandler.getBitmap();
 
             MyTimer.stopTimer();
             double treeTime = MyTimer.durationSeconds();
             MyTimer.temporaryTimer.put("treeTime", treeTime);
-            System.out.println("[Data Aggregator] tree search directly aggregates result into a bitmap.");
+            System.out.println("[Data Aggregator] tree search got " + resultSize + " raw data points, and directly aggregates into a bitmap");
             System.out.println("[Data Aggregator] tree search time: " + treeTime + " seconds.");
 
             // build bitmap message

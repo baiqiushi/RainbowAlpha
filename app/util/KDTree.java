@@ -310,8 +310,8 @@ public class KDTree<PointType extends I2DPoint> implements I2DIndex<PointType> {
     }
 
     @Override
-    public void range(I2DPoint leftBottom, I2DPoint rightTop, I2DIndexNodeHandler nodeHandler) {
-        return;
+    public int range(I2DPoint leftBottom, I2DPoint rightTop, I2DIndexNodeHandler nodeHandler) {
+        return 0 ;
     }
 
     public void print() {

@@ -16,7 +16,7 @@ public interface I2DIndex<PointType> {
 
     List<PointType> range(I2DPoint leftBottom, I2DPoint rightTop);
 
-    void range(I2DPoint leftBottom, I2DPoint rightTop, I2DIndexNodeHandler nodeHandler);
+    int range(I2DPoint leftBottom, I2DPoint rightTop, I2DIndexNodeHandler nodeHandler);
 
     void print();
 }

@@ -115,10 +115,12 @@ public class OptKDTree<PointType extends I2DPoint> implements I2DIndex<PointType
         return null;
     }
 
-    public void range(I2DPoint leftBottom, I2DPoint rightTop, I2DIndexNodeHandler nodeHandler) {
+    public int range(I2DPoint leftBottom, I2DPoint rightTop, I2DIndexNodeHandler nodeHandler) {
         if (root == null) {
-            return;
+            return 0 ;
         }
+
+        int counter = 0;
 
         Queue<Node> queue = new LinkedList<>();
         queue.add(root);
@@ -129,6 +131,7 @@ public class OptKDTree<PointType extends I2DPoint> implements I2DIndex<PointType
             if (currentNode.rightAbove(leftBottom) && currentNode.leftBelow(rightTop)) {
 
                 nodeHandler.handleNode(currentNode.getX(), currentNode.getY(), currentNode.duplicates);
+                counter ++;
 
                 if (currentNode.left != null) {
                     queue.add(currentNode.left);
@@ -189,7 +192,7 @@ public class OptKDTree<PointType extends I2DPoint> implements I2DIndex<PointType
                 }
             }
         }
-        return;
+        return counter;
     }
 
     public void print() {
