@@ -1,6 +1,5 @@
 package algorithms;
 
-import akka.http.scaladsl.model.Uri;
 import model.Point;
 import util.*;
 import util.render.DeckGLRendererV2;
@@ -22,7 +21,12 @@ public class DataAggregator implements IAlgorithm {
 
     public DataAggregator(String aggregator) {
         this.aggregator = aggregator;
-        this.index = new KDTree<>();
+        if (Constants.MSG_TYPE == 0) {
+            this.index = new KDTree<>();
+        }
+        else if (Constants.MSG_TYPE == 1) {
+            this.index = new OptKDTree<>();
+        }
 
         // initialize the timing map
         if (keepTiming) {
@@ -85,6 +89,36 @@ public class DataAggregator implements IAlgorithm {
     private List<Point> concat(List<Point> a, List<Point> b) {
         a.addAll(b);
         return a;
+    }
+
+    /**
+     * Traverse points for given visible region with given nodeHandler
+     *
+     * @param lng0
+     * @param lat0
+     * @param lng1
+     * @param lat1
+     * @param nodeHandler
+     * @return
+     */
+    private void getPoints(double lng0, double lat0, double lng1, double lat1, I2DIndexNodeHandler nodeHandler) {
+        double minLng = ((lng0 + 180) % 360 + 360) % 360 - 180;
+        double minLat = Math.max(-90, Math.min(90, lat0));
+        double maxLng = lng1 == 180 ? 180 : ((lng1 + 180) % 360 + 360) % 360 - 180;
+        double maxLat = Math.max(-90, Math.min(90, lat1));
+
+        if (lng1 - lng0 >= 360) {
+            minLng = -180;
+            maxLng = 180;
+        } else if (minLng > maxLng) {
+            this.getPoints(minLng, minLat, 180, maxLat, nodeHandler);
+            this.getPoints(-180, minLat, maxLng, maxLat, nodeHandler);
+            return;
+        }
+
+        Point leftBottom = new Point(lngX(minLng), latY(maxLat));
+        Point rightTop = new Point(lngX(maxLng), latY(minLat));
+        this.index.range(leftBottom, rightTop, nodeHandler);
     }
 
     public byte[] answerQuery(double lng0, double lat0, double lng1, double lat1, int zoom, int resX, int resY) {
@@ -164,37 +198,17 @@ public class DataAggregator implements IAlgorithm {
             System.out.println("[Data Aggregator] is answering query Q = { range: [" + lng0 + ", " + lat0 + "] ~ [" +
                     lng1 + ", " + lat1 + "], resolution: [" + resX + " x " + resY + "], zoom: " + zoom + " } ...");
 
-            // get all data points
             MyTimer.startTimer();
-            List<Point> allPoints = getPoints(lng0, lat0, lng1, lat1);
+
+            DataAggregatorNodeHandler nodeHandler = new DataAggregatorNodeHandler(resX, resY, lng0, lat0, lng1, lat1);
+            getPoints(lng0, lat0, lng1, lat1, nodeHandler);
+            boolean[][] bitmap = nodeHandler.getBitmap();
+
             MyTimer.stopTimer();
             double treeTime = MyTimer.durationSeconds();
             MyTimer.temporaryTimer.put("treeTime", treeTime);
-            System.out.println("[Data Aggregator] tree search got " + allPoints.size() + " raw data points.");
+            System.out.println("[Data Aggregator] tree search directly aggregates result into a bitmap.");
             System.out.println("[Data Aggregator] tree search time: " + treeTime + " seconds.");
-
-            // do aggregation and build bitmap result message
-            MyTimer.startTimer();
-            // generate a bitmap based on resolution (resX, resY)
-            boolean[][] bitmap = new boolean[resX][resY];
-            double x0 = lngX(lng0);
-            double y1 = latY(lat0);
-            double x1 = lngX(lng1);
-            double y0 = latY(lat1);
-            double deltaX = x1 - x0;
-            double deltaY = y1 - y0;
-            for (Point point : allPoints) {
-                // find pixel index of this point based on resolution resX * resY
-                int i = (int) Math.floor((point.getX() - x0) * resX / deltaX);
-                int j = (int) Math.floor((point.getY() - y0) * resY / deltaY);
-                // set the bit to be true
-                bitmap[i][j] = true;
-            }
-            MyTimer.stopTimer();
-            double aggregateTime = MyTimer.durationSeconds();
-            MyTimer.temporaryTimer.put("aggregateTime", aggregateTime);
-            System.out.println("[Data Aggregator] after aggregation, reduced to a bitmap with " + (int)(Math.ceil(resY/8.0) * resX)  + " Bytes.");
-            System.out.println("[Data Aggregator] aggregation time: " + aggregateTime + " seconds.");
 
             // build bitmap message
             MyTimer.startTimer();

@@ -1,6 +1,5 @@
 package util;
 
-import javafx.util.Pair;
 import model.I2DPoint;
 
 import java.util.*;
@@ -308,6 +307,11 @@ public class KDTree<PointType extends I2DPoint> implements I2DIndex<PointType> {
             }
         }
         return result;
+    }
+
+    @Override
+    public void range(I2DPoint leftBottom, I2DPoint rightTop, I2DIndexNodeHandler nodeHandler) {
+        return;
     }
 
     public void print() {

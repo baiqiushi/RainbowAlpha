@@ -1,8 +1,8 @@
 package model;
 
 public class Point implements I2DPoint {
-    double x;
-    double y;
+    protected double x;
+    protected double y;
 
     public Point() {
         x = 0.0;
