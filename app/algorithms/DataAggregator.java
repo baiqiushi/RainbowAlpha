@@ -201,7 +201,7 @@ public class DataAggregator implements IAlgorithm {
 
             MyTimer.startTimer();
 
-            DataAggregatorNodeHandler nodeHandler = new DataAggregatorNodeHandler(resX, resY, lng0, lat0, lng1, lat1);
+            BitmapNodeHandler nodeHandler = new BitmapNodeHandler(resX, resY, lng0, lat0, lng1, lat1);
             int resultSize = getPoints(lng0, lat0, lng1, lat1, nodeHandler);
             boolean[][] bitmap = nodeHandler.getBitmap();
 

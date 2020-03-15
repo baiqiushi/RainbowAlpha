@@ -1,10 +1,7 @@
 package algorithms;
 
 import model.Point;
-import util.BinaryMessageBuilder;
-import util.Constants;
-import util.MyMemory;
-import util.MyTimer;
+import util.*;
 
 import java.util.*;
 
@@ -200,6 +197,63 @@ public class QuadTreeAggregator implements IAlgorithm {
 
             return pointsInRange;
         }
+
+        public int range(double ncX, double ncY, double nhalfWidth, double nhalfHeight,
+                                 double rcX, double rcY, double rhalfWidth, double rhalfHeight,
+                                 double resScale, I2DIndexNodeHandler nodeHandler) {
+
+            // Automatically abort if the range does not intersect this quad
+            if (!intersectsBBox(ncX, ncY, nhalfWidth, nhalfHeight, rcX, rcY, rhalfWidth, rhalfHeight))
+                return 0; // empty list
+
+            // Terminate here, if there are no children
+            if (this.northWest == null) {
+                if (this.point != null) {
+                    nodeHandler.handleNode(this.point.getX(), this.point.getY(), (short) 0);
+                }
+                return 1;
+            }
+
+            // Terminate here, if this node's boundary is already smaller than resScale
+            if (Math.max(nhalfWidth, nhalfHeight) * 2 <= resScale) {
+                nodeHandler.handleNode(ncX, ncY, (short) 0);
+                return 1;
+            }
+
+            // Otherwise, add the points from the children
+            double cX, cY;
+            double halfWidth, halfHeight;
+            halfWidth = nhalfWidth / 2;
+            halfHeight = nhalfHeight / 2;
+            // northwest
+            cX = ncX - halfWidth;
+            cY = ncY + halfHeight;
+
+            int count = 0;
+
+            count += this.northWest.range(cX, cY, halfWidth, halfHeight,
+                    rcX, rcY, rhalfWidth, rhalfHeight, resScale, nodeHandler);
+
+            // northeast
+            cX = ncX + halfWidth;
+            cY = ncY + halfHeight;
+            count += this.northEast.range(cX, cY, halfWidth, halfHeight,
+                    rcX, rcY, rhalfWidth, rhalfHeight, resScale, nodeHandler);
+
+            // southwest
+            cX = ncX - halfWidth;
+            cY = ncY - halfHeight;
+            count += this.southWest.range(cX, cY, halfWidth, halfHeight,
+                    rcX, rcY, rhalfWidth, rhalfHeight, resScale, nodeHandler);
+
+            // southeast
+            cX = ncX + halfWidth;
+            cY = ncY - halfHeight;
+            count += this.southEast.range(cX, cY, halfWidth, halfHeight,
+                    rcX, rcY, rhalfWidth, rhalfHeight, resScale, nodeHandler);
+
+            return count;
+        }
     }
 
     QuadTree quadTree;
@@ -271,54 +325,106 @@ public class QuadTreeAggregator implements IAlgorithm {
     }
 
     public byte[] answerQuery(double lng0, double lat0, double lng1, double lat1, int zoom, int resX, int resY) {
-        MyTimer.startTimer();
-        System.out.println("[QuadTree Aggregator] is answering query Q = { range: [" + lng0 + ", " + lat0 + "] ~ [" +
-                lng1 + ", " + lat1 + "], resolution: [" + resX + " x " + resY + "], zoom: " + zoom + " } ...");
+        /** message type is binary */
+        if (Constants.MSG_TYPE == 0) {
+            MyTimer.startTimer();
+            System.out.println("[QuadTree Aggregator] is answering query Q = { range: [" + lng0 + ", " + lat0 + "] ~ [" +
+                    lng1 + ", " + lat1 + "], resolution: [" + resX + " x " + resY + "], zoom: " + zoom + " } ...");
 
-        double iX0 = lngX(lng0);
-        double iY0 = latY(lat0);
-        double iX1 = lngX(lng1);
-        double iY1 = latY(lat1);
-        double resScale = Math.min((iX1 - iX0) / resX, (iY0 - iY1) / resY);
-        double rcX = (iX0 + iX1) / 2;
-        double rcY = (iY0 + iY1) / 2;
-        double rhalfWidth = (iX1 - iX0) / 2;
-        double rhalfHeight = (iY0 - iY1) / 2;
+            double x0 = lngX(lng0);
+            double y1 = latY(lat0);
+            double x1 = lngX(lng1);
+            double y0 = latY(lat1);
+            double resScale = Math.min((x1 - x0) / resX, (y1 - y0) / resY);
+            double rcX = (x0 + x1) / 2;
+            double rcY = (y1 + y0) / 2;
+            double rhalfWidth = (x1 - x0) / 2;
+            double rhalfHeight = (y1 - y0) / 2;
 
-        System.out.println("[QuadTree Aggregator] starting range search on QuadTree with: \n" +
-                "range = [(" + rcX + ", " + rcY + "), " + rhalfWidth + ", " + rhalfHeight + "] ; \n" +
-                "resScale = " + resScale + ";");
+            System.out.println("[QuadTree Aggregator] starting range search on QuadTree with: \n" +
+                    "range = [(" + rcX + ", " + rcY + "), " + rhalfWidth + ", " + rhalfHeight + "] ; \n" +
+                    "resScale = " + resScale + ";");
 
-        MyTimer.startTimer();
-        List<Point> points = this.quadTree.range(this.quadTreeCX, this.quadTreeCY, this.quadTreeHalfWidth, this.quadTreeHalfHeight,
-                rcX, rcY, rhalfWidth, rhalfHeight, resScale);
-        MyTimer.stopTimer();
-        double treeTime = MyTimer.durationSeconds();
+            MyTimer.startTimer();
+            List<Point> points = this.quadTree.range(this.quadTreeCX, this.quadTreeCY, this.quadTreeHalfWidth, this.quadTreeHalfHeight,
+                    rcX, rcY, rhalfWidth, rhalfHeight, resScale);
+            MyTimer.stopTimer();
+            double treeTime = MyTimer.durationSeconds();
 
-        MyTimer.temporaryTimer.put("treeTime", treeTime);
-        System.out.println("[QuadTree Aggregator] tree search got " + points.size() + " data points.");
-        System.out.println("[QuadTree Aggregator] tree search time: " + treeTime + " seconds.");
+            MyTimer.temporaryTimer.put("treeTime", treeTime);
+            System.out.println("[QuadTree Aggregator] tree search got " + points.size() + " data points.");
+            System.out.println("[QuadTree Aggregator] tree search time: " + treeTime + " seconds.");
 
-        // build binary result message
-        MyTimer.startTimer();
-        BinaryMessageBuilder messageBuilder = new BinaryMessageBuilder();
-        double lng, lat;
-        int resultSize = 0;
-        for (Point point : points) {
-            lng = xLng(point.getX());
-            lat = yLat(point.getY());
-            messageBuilder.add(lng, lat);
-            resultSize ++;
+            // build binary result message
+            MyTimer.startTimer();
+            BinaryMessageBuilder messageBuilder = new BinaryMessageBuilder();
+            double lng, lat;
+            int resultSize = 0;
+            for (Point point : points) {
+                lng = xLng(point.getX());
+                lat = yLat(point.getY());
+                messageBuilder.add(lng, lat);
+                resultSize++;
+            }
+            MyTimer.stopTimer();
+            double buildBinaryTime = MyTimer.durationSeconds();
+            MyTimer.temporaryTimer.put("aggregateTime", buildBinaryTime);
+            System.out.println("[QuadTree Aggregator] build binary result with  " + resultSize + " points.");
+            System.out.println("[QuadTree Aggregator] build binary result time: " + buildBinaryTime + " seconds.");
+
+            MyTimer.stopTimer();
+            System.out.println("[QuadTree Aggregator] answer query total time: " + MyTimer.durationSeconds() + " seconds.");
+            return messageBuilder.getBuffer();
         }
-        MyTimer.stopTimer();
-        double buildBinaryTime = MyTimer.durationSeconds();
-        MyTimer.temporaryTimer.put("aggregateTime", buildBinaryTime);
-        System.out.println("[QuadTree Aggregator] build binary result with  " + resultSize + " points.");
-        System.out.println("[QuadTree Aggregator] build binary result time: " + buildBinaryTime + " seconds.");
+        /** message type = bitmap (only support "snapping" aggregation)*/
+        else if (Constants.MSG_TYPE == 1) {
+            MyTimer.startTimer();
+            System.out.println("[QuadTree Aggregator] is answering query Q = { range: [" + lng0 + ", " + lat0 + "] ~ [" +
+                    lng1 + ", " + lat1 + "], resolution: [" + resX + " x " + resY + "], zoom: " + zoom + " } ...");
 
-        MyTimer.stopTimer();
-        System.out.println("[QuadTree Aggregator] answer query total time: " + MyTimer.durationSeconds() + " seconds.");
-        return messageBuilder.getBuffer();
+            double x0 = lngX(lng0);
+            double y1 = latY(lat0);
+            double x1 = lngX(lng1);
+            double y0 = latY(lat1);
+            double resScale = Math.min((x1 - x0) / resX, (y1 - y0) / resY);
+            double rcX = (x0 + x1) / 2;
+            double rcY = (y1 + y0) / 2;
+            double rhalfWidth = (x1 - x0) / 2;
+            double rhalfHeight = (y1 - y0) / 2;
+
+            System.out.println("[QuadTree Aggregator] starting range search on QuadTree with: \n" +
+                    "range = [(" + rcX + ", " + rcY + "), " + rhalfWidth + ", " + rhalfHeight + "] ; \n" +
+                    "resScale = " + resScale + ";");
+
+            MyTimer.startTimer();
+
+            BitmapNodeHandler nodeHandler = new BitmapNodeHandler(resX, resY, lng0, lat0, lng1, lat1);
+            int resultSize = this.quadTree.range(this.quadTreeCX, this.quadTreeCY, this.quadTreeHalfWidth, this.quadTreeHalfHeight,
+                    rcX, rcY, rhalfWidth, rhalfHeight, resScale, nodeHandler);
+            boolean[][] bitmap = nodeHandler.getBitmap();
+
+            MyTimer.stopTimer();
+            double treeTime = MyTimer.durationSeconds();
+
+            MyTimer.temporaryTimer.put("treeTime", treeTime);
+            System.out.println("[QuadTree Aggregator] tree search got " + resultSize + " data points, and directly aggregates into a bitmap.");
+            System.out.println("[QuadTree Aggregator] tree search time: " + treeTime + " seconds.");
+
+            // build bitmap message
+            MyTimer.startTimer();
+            BitmapMessageBuilder bitmapMessageBuilder = new BitmapMessageBuilder(resX, resY, lng0, lat0, lng1, lat1);
+            bitmapMessageBuilder.write(bitmap);
+            MyTimer.stopTimer();
+            double bufferTime = MyTimer.durationSeconds();
+            System.out.println("[QuadTree Aggregator] bitmap buffer time: " + bufferTime + " seconds.");
+
+            MyTimer.stopTimer();
+            System.out.println("[QuadTree Aggregator] answer query total time: " + MyTimer.durationSeconds() + " seconds.");
+            return bitmapMessageBuilder.getBuffer();
+        }
+        // should not run to this point
+        System.err.println("[QuadTree Aggregator] didn't get a valid message type from configuration file, message.type = " + Constants.MSG_TYPE);
+        return new byte[0];
     }
 
     private void printTiming() {

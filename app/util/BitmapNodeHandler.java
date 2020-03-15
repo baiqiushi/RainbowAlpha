@@ -2,7 +2,7 @@ package util;
 
 import static util.Mercator.*;
 
-public class DataAggregatorNodeHandler implements I2DIndexNodeHandler {
+public class BitmapNodeHandler implements I2DIndexNodeHandler {
 
     boolean[][] bitmap;
     int resX;
@@ -14,7 +14,7 @@ public class DataAggregatorNodeHandler implements I2DIndexNodeHandler {
     double deltaX;
     double deltaY;
 
-    public DataAggregatorNodeHandler(int _resX, int _resY, double _lng0, double _lat0, double _lng1, double _lat1) {
+    public BitmapNodeHandler(int _resX, int _resY, double _lng0, double _lat0, double _lng1, double _lat1) {
         resX = _resX;
         resY = _resY;
         bitmap = new boolean[resX][resY];
@@ -35,6 +35,12 @@ public class DataAggregatorNodeHandler implements I2DIndexNodeHandler {
         // find pixel index of this point based on resolution resX * resY
         int i = (int) Math.floor((x - x0) * resX / deltaX);
         int j = (int) Math.floor((y - y0) * resY / deltaY);
+
+        // skip point outside given screen view
+        if (i < 0 || i > resX || j < 0 || j > resY) {
+            return;
+        }
+
         // set the bit to be true
         bitmap[i][j] = true;
     }
