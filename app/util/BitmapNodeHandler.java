@@ -37,7 +37,7 @@ public class BitmapNodeHandler implements I2DIndexNodeHandler {
         int j = (int) Math.floor((y - y0) * resY / deltaY);
 
         // skip point outside given screen view
-        if (i < 0 || i > resX || j < 0 || j > resY) {
+        if (i < 0 || i >= resX || j < 0 || j >= resY) {
             return;
         }
 
