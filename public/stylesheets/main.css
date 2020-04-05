@@ -539,11 +539,9 @@ div.sticky {
   position:fixed;
   width:80px;
   height:40px;
-  bottom:20px;
-  right:20px;
   background-color: white;
   opacity: 0.5;
-  color: dodgerblue;
+  color: #008CBA;
   border: 2px solid #008CBA;
   border-radius:8px;
   text-align:center;
@@ -575,7 +573,7 @@ div.sticky {
 
 /* load button */
 .load{
-  width:50px;
+  width:84px;
   height:25px;
   background-color: white;
   opacity: 0.7;

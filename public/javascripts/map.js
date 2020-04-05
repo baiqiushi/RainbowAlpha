@@ -467,6 +467,31 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
       });
 
       $scope.waitForWS();
+
+
+      // create save button
+      $scope.screenshotButton = document.createElement("button");
+      $scope.screenshotButton.className = "float";
+      $scope.screenshotButton.id = "screenshot-btn";
+      $scope.screenshotButton.innerHTML = "Screenshot";
+      $scope.screenshotButton.style.bottom = "70px";
+      $scope.screenshotButton.style.right = "20px";
+      $scope.screenshotButton.style.width = "90px";
+      document.body.appendChild($scope.screenshotButton);
+      $scope.screenshotButton.addEventListener("click", function() {
+        if ($scope.scatterType === "deck-gl" && $scope.scatterLayer) {
+          $scope.scatterLayer.redraw(true);
+        }
+        let div = document.getElementById("deck-gl-canvas");
+        html2canvas(div).then(canvas => {
+          document.body.appendChild(canvas);
+          let a = document.createElement('a');
+          // toDataURL defaults to png, so we need to request a jpeg, then convert for file download.
+          a.href = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
+          a.download = 'screenshot.png';
+          a.click();
+        });
+      });
     };
 
     /** middleware mode */

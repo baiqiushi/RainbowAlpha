@@ -15,14 +15,23 @@
     <div id="console" class="sticky" ng-controller="console">
       <terminal> </terminal>
     </div>
-    <button id="console-btn" class="float">Terminal</button>
     <script>
-            $(document).ready(function(){
-              $("#console").hide();
-            });
-            $("#console-btn").click(function(){
-              $("#console").slideToggle();
-            });
+      $(document).ready(function(){
+        $("#console").hide();
+      });
+
+      // create console button
+      let consoleButton = document.createElement("button");
+      consoleButton.className = "float";
+      consoleButton.id = "console-btn";
+      consoleButton.innerHTML = "Terminal";
+      consoleButton.style.bottom = "20px";
+      consoleButton.style.right = "20px";
+      document.body.appendChild(consoleButton);
+      consoleButton.addEventListener("click", function(){
+        $("#console").slideToggle();
+      });
+
     </script>
   </div>
 }
