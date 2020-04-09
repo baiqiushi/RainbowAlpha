@@ -5,7 +5,8 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
     $scope.mwVisualizationType = "scatter"; // "heat" / "scatter"
     $scope.feVisualizationType = "scatter"; // "heat" / "scatter"
     $scope.scatterType = "gl-pixel"; // "gl-pixel" / "gl-raster" / "leaflet" / "deck-gl"
-    $scope.pointRadius = 1;
+    $scope.pointRadius = 1; // default point radius
+    $scope.opacity = 1.0; // default opacity
     $scope.recording = false; // whether it's recording zoom/pan actions
     $scope.actions = []; // zoom/pan actions recorded
     $scope.replaying = false; // whether it's replaying recorded zoom/pan actions
@@ -244,6 +245,37 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
                   if ($scope.points) {
                     $scope.drawMWHeatLayer($scope.points);
                   }
+                  break;
+                case "scatter":
+                  $scope.cleanScatterLayer();
+                  if ($scope.points) {
+                    $scope.drawMWScatterLayer($scope.points);
+                  }
+                  break;
+              }
+              break;
+          }
+        });
+
+        moduleManager.subscribeEvent(moduleManager.EVENT.CHANGE_OPACITY, function(e) {
+          console.log("switch opacity to " + e.opacity);
+          $scope.opacity = e.opacity;
+          switch ($scope.mode) {
+            case "frontend":
+              switch ($scope.feVisualizationType) {
+                case "heat":
+                  break;
+                case "scatter":
+                  $scope.cleanScatterLayer();
+                  if ($scope.rawData) {
+                    $scope.drawFEScatterLayer($scope.rawData);
+                  }
+                  break;
+              }
+              break;
+            case "middleware":
+              switch ($scope.mwVisualizationType) {
+                case "heat":
                   break;
                 case "scatter":
                   $scope.cleanScatterLayer();
@@ -831,6 +863,7 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
               /* unique id of this layer */
               id: 'deck-gl-scatter',
               data: $scope.points,
+              opacity: $scope.opacity,
               /* data accessors */
               radiusMinPixels: Math.round($scope.pointRadius),
               getPosition: d => [d[1], d[0]],     // returns longitude, latitude, [altitude]

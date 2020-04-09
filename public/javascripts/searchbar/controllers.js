@@ -280,7 +280,7 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
         $scope.selectPointRadius = document.createElement("select");
         $scope.selectPointRadius.title = "pointRadius";
         $scope.selectPointRadius.style.position = 'fixed';
-        $scope.selectPointRadius.style.top = '145px';
+        $scope.selectPointRadius.style.top = '150px';
         $scope.selectPointRadius.style.left = '8px';
         for (let i = 0.5; i <=5 ; i += 0.5) {
           let option = document.createElement("option");
@@ -298,9 +298,38 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
         $scope.selectPointRadiusLabel.innerHTML = "Point Radius";
         $scope.selectPointRadiusLabel.htmlFor ="pointRadius";
         $scope.selectPointRadiusLabel.style.position = 'fixed';
-        $scope.selectPointRadiusLabel.style.top = '145px';
+        $scope.selectPointRadiusLabel.style.top = '150px';
         $scope.selectPointRadiusLabel.style.left = '60px';
         document.body.appendChild($scope.selectPointRadiusLabel);
+
+        // Opacity Select
+        $scope.selectOpacity = document.createElement("select");
+        $scope.selectOpacity.title = "opacity";
+        $scope.selectOpacity.style.position = 'fixed';
+        $scope.selectOpacity.style.top = '175px';
+        $scope.selectOpacity.style.left = '8px';
+        for (let i = 1; i <= 9; i ++) {
+          let option = document.createElement("option");
+          option.text = "0." + i;
+          $scope.selectOpacity.add(option);
+        }
+        let option = document.createElement("option");
+        option.text = "1.0";
+        $scope.selectOpacity.add(option);
+
+        $scope.selectOpacity.value = "1.0";
+        document.body.appendChild($scope.selectOpacity);
+        $scope.selectOpacity.addEventListener("change", function () {
+          moduleManager.publishEvent(moduleManager.EVENT.CHANGE_OPACITY,
+            {opacity: $scope.selectOpacity.value});
+        });
+        $scope.selectOpacityLabel = document.createElement("label");
+        $scope.selectOpacityLabel.innerHTML = "Opacity";
+        $scope.selectOpacityLabel.htmlFor ="opacity";
+        $scope.selectOpacityLabel.style.position = 'fixed';
+        $scope.selectOpacityLabel.style.top = '175px';
+        $scope.selectOpacityLabel.style.left = '60px';
+        document.body.appendChild($scope.selectOpacityLabel);
 
         // Button for recording actions
         $scope.buttonRecord = document.createElement("button");
