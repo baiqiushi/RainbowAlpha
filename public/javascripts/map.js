@@ -357,22 +357,35 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
     };
 
     // setting default map styles, zoom level, etc.
+    /** open street map light style */
     angular.extend($scope, {
       tiles: {
-        name: 'Mapbox',
-        url: 'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}',
-        type: 'xyz',
-        options: {
-          accessToken: 'pk.eyJ1IjoiamVyZW15bGkiLCJhIjoiY2lrZ2U4MWI4MDA4bHVjajc1am1weTM2aSJ9.JHiBmawEKGsn3jiRK_d0Gw',
-          id: 'jeremyli.p6f712pj'
-        }
+        name: 'OpenStreetMap',
+        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.pn',
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attribution">CARTO</a>'
       },
       controls: {
         custom: []
       }
     });
 
-    /** colored map style */
+    /** map box light style */
+    // angular.extend($scope, {
+    //   tiles: {
+    //     name: 'Mapbox',
+    //     url: 'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}',
+    //     type: 'xyz',
+    //     options: {
+    //       accessToken: 'pk.eyJ1IjoiamVyZW15bGkiLCJhIjoiY2lrZ2U4MWI4MDA4bHVjajc1am1weTM2aSJ9.JHiBmawEKGsn3jiRK_d0Gw',
+    //       id: 'jeremyli.p6f712pj'
+    //     }
+    //   },
+    //   controls: {
+    //     custom: []
+    //   }
+    // });
+
+    /** open street map colored style */
     // angular.extend($scope, {
     //   tiles: {
     //     name: 'OpenStreetMap',
