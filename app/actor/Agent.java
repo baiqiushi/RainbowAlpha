@@ -428,6 +428,10 @@ public class Agent extends AbstractActor {
                 case "gqta":
                     algorithm = new GQuadTreeAggregator();
                     break;
+                case "raquadtreeaggregator":
+                case "raqta":
+                    algorithm = new RAQuadTreeAggregator();
+                    break;
                 default:
                     return null;
             }
