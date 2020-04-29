@@ -2,6 +2,7 @@ package algorithms;
 
 import javafx.util.Pair;
 import model.Point;
+import model.Query;
 import util.BinaryMessageBuilder;
 import util.Constants;
 import util.MyTimer;
@@ -442,7 +443,15 @@ public class GQuadTreeAggregator implements IAlgorithm {
         //-DEBUG-//
     }
 
-    public byte[] answerQuery(double lng0, double lat0, double lng1, double lat1, int zoom, int resX, int resY) {
+    public byte[] answerQuery(Query query) {
+        double lng0 = query.bbox[0];
+        double lat0 = query.bbox[1];
+        double lng1 = query.bbox[2];
+        double lat1 = query.bbox[3];
+        int zoom = query.zoom;
+        int resX = query.resX;
+        int resY = query.resY;
+
         MyTimer.startTimer();
         System.out.println("[General QuadTree Aggregator] is answering query Q = { range: [" + lng0 + ", " + lat0 + "] ~ [" +
                 lng1 + ", " + lat1 + "], resolution: [" + resX + " x " + resY + "], zoom: " + zoom + " } ...");

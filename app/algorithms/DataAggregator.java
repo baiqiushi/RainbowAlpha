@@ -1,6 +1,7 @@
 package algorithms;
 
 import model.Point;
+import model.Query;
 import util.*;
 import util.render.DeckGLRendererV2;
 
@@ -122,7 +123,15 @@ public class DataAggregator implements IAlgorithm {
         return this.index.range(leftBottom, rightTop, nodeHandler);
     }
 
-    public byte[] answerQuery(double lng0, double lat0, double lng1, double lat1, int zoom, int resX, int resY) {
+    public byte[] answerQuery(Query query) {
+        double lng0 = query.bbox[0];
+        double lat0 = query.bbox[1];
+        double lng1 = query.bbox[2];
+        double lat1 = query.bbox[3];
+        int zoom = query.zoom;
+        int resX = query.resX;
+        int resY = query.resY;
+
         /** message type is binary */
         if (Constants.MSG_TYPE == 0) {
             MyTimer.startTimer();

@@ -331,6 +331,32 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
         $scope.selectOpacityLabel.style.left = '60px';
         document.body.appendChild($scope.selectOpacityLabel);
 
+        // Error Select
+        $scope.selectError = document.createElement("select");
+        $scope.selectError.title = "Error";
+        $scope.selectError.style.position = 'fixed';
+        $scope.selectError.style.top = '200px';
+        $scope.selectError.style.left = '8px';
+        for (let i = 0; i <= 100; i += 10) {
+          let option = document.createElement("option");
+          option.text = "" + i;
+          $scope.selectError.add(option);
+        }
+
+        $scope.selectError.value = "0";
+        document.body.appendChild($scope.selectError);
+        $scope.selectError.addEventListener("change", function () {
+          moduleManager.publishEvent(moduleManager.EVENT.CHANGE_ERROR,
+            {error: $scope.selectError.value});
+        });
+        $scope.selectErrorLabel = document.createElement("label");
+        $scope.selectErrorLabel.innerHTML = "Error";
+        $scope.selectErrorLabel.htmlFor ="error";
+        $scope.selectErrorLabel.style.position = 'fixed';
+        $scope.selectErrorLabel.style.top = '200px';
+        $scope.selectErrorLabel.style.left = '60px';
+        document.body.appendChild($scope.selectErrorLabel);
+
         // Button for recording actions
         $scope.buttonRecord = document.createElement("button");
         $scope.buttonRecord.id = "record";

@@ -11,4 +11,5 @@ public class Query {
     public int resX; // frontend resolution x
     public int resY; // frontend resolution y
     public String aggregator; // for DataAggregator and QuadTreeAggregators: "gl-pixel" / "leaflet" / "deck-gl"
+    public double error; // error threshold
 }

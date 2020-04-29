@@ -191,7 +191,7 @@ public class Agent extends AbstractActor {
 
         // query the algorithm
         IAlgorithm algorithm = algorithms.get(query.key);
-        byte[] binaryData = algorithm.answerQuery(query.bbox[0], query.bbox[1], query.bbox[2], query.bbox[3], query.zoom, query.resX, query.resY);
+        byte[] binaryData = algorithm.answerQuery(query);
 
         MyTimer.stopTimer();
         double totalTime = MyTimer.durationSeconds();

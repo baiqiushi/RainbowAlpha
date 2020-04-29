@@ -49,6 +49,31 @@ public class DeckGLRenderer implements IRenderer {
     }
 
     /**
+     * Create a rendering of all pixels filled with color
+     *
+     *  - Use 1-D array to simulate a 3-D array
+     *    suppose 3-D array has dimension lengths: side * side * 3
+     *    [i][j][k] = i * side * 3 + j * 3 + k
+     *
+     * @param _resolution
+     * @return
+     */
+    @Override
+    public byte[] createFullRendering(int _resolution) {
+        int side = _resolution + 2 * (radiusInPixels + 1);
+        byte[] rendering = new byte[side * side * 3];
+        // init rendering with BG_COLOR
+        for (int i = 0; i < side; i++) {
+            for (int j = 0; j < side; j++) {
+                rendering[i * side * 3 + j * 3 + 0] = COLOR[0]; // R
+                rendering[i * side * 3 + j * 3 + 1] = COLOR[1]; // G
+                rendering[i * side * 3 + j * 3 + 2] = COLOR[2]; // B
+            }
+        }
+        return rendering;
+    }
+
+    /**
      * Render a new point onto the given rendering
      *
      * @param rendering - Use 1-D array to simulate a 3-D array
