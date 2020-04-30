@@ -337,7 +337,7 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
         $scope.selectError.style.position = 'fixed';
         $scope.selectError.style.top = '200px';
         $scope.selectError.style.left = '8px';
-        for (let i = 0; i <= 100; i += 10) {
+        for (let i = 0; i <= 200; i += 10) {
           let option = document.createElement("option");
           option.text = "" + i;
           $scope.selectError.add(option);
