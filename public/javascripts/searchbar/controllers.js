@@ -342,6 +342,11 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
           option.text = "" + i;
           $scope.selectError.add(option);
         }
+        for (let i = 250; i <= 10000; i += 50) {
+          let option = document.createElement("option");
+          option.text = "" + i;
+          $scope.selectError.add(option);
+        }
 
         $scope.selectError.value = "0";
         document.body.appendChild($scope.selectError);
@@ -354,7 +359,7 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
         $scope.selectErrorLabel.htmlFor ="error";
         $scope.selectErrorLabel.style.position = 'fixed';
         $scope.selectErrorLabel.style.top = '200px';
-        $scope.selectErrorLabel.style.left = '60px';
+        $scope.selectErrorLabel.style.left = '100px';
         document.body.appendChild($scope.selectErrorLabel);
 
         // Button for recording actions
