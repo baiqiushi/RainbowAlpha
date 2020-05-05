@@ -12,9 +12,9 @@ public class DeckGLRenderer implements IRenderer {
             UnsignedByte.toByte(255)
     }; // blue
     static byte[] BG_COLOR = {
-            UnsignedByte.toByte(255),
-            UnsignedByte.toByte(255),
-            UnsignedByte.toByte(255)
+            UnsignedByte.toByte(221),
+            UnsignedByte.toByte(221),
+            UnsignedByte.toByte(221)
     }; // white
 
     int radiusInPixels;

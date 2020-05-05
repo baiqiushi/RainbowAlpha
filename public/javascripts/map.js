@@ -96,7 +96,7 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
       }
 
       if (e.error) {
-        $scope.query.error = e.error * 10;
+        $scope.query.error = e.error;
       }
 
       $scope.query.aggregator = $scope.scatterType;
