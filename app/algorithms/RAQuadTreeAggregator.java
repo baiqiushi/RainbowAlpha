@@ -465,7 +465,12 @@ public class RAQuadTreeAggregator implements IAlgorithm {
                         numberOfNodesStoppedAtLevels[_level]++;
                         if (currentNode.samples != null) {
                             numberOfSamplesStoppedAtLevels[_level] += currentNode.samples.size();
-                            pointsInRange.addAll(currentNode.samples);
+                            // to make sure the result size is roughly the target sample ratio,
+                            // do a random sample on currentNode.samples.
+                            double localSampleRatio = targetSampleRatio / (1.0 - _estimatedProfit);
+                            int localSampleSize = (int) (currentNode.samples.size() * localSampleRatio);
+                            localSampleSize = Math.max(localSampleSize, 1);
+                            pointsInRange.addAll(currentNode.samples.subList(0, localSampleSize - 1));
                         }
                         continue;
                     }
