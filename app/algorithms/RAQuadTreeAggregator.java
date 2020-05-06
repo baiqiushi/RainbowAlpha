@@ -172,12 +172,11 @@ public class RAQuadTreeAggregator implements IAlgorithm {
          * @param rhalfHeight
          * @param rPixelScale
          * @param level
-         * @param totalError - total error budget for this quadrant
          * @return
          */
         public List<Point> dfs(double ncX, double ncY, double nhalfDimension,
                                double rcX, double rcY, double rhalfWidth, double rhalfHeight,
-                               double rPixelScale, int level, double totalError) {
+                               double rPixelScale, int level) {
             List<Point> pointsInRange = new ArrayList<>();
 
             // Automatically abort if the range does not intersect this quad
@@ -188,29 +187,16 @@ public class RAQuadTreeAggregator implements IAlgorithm {
             if (this.northWest == null) {
                 numberOfNodesStoppedAtLevels[level] ++;
                 if (this.samples != null) {
+                    numberOfSamplesStoppedAtLevels[level] += this.samples.size();
                     pointsInRange.addAll(this.samples);
                 }
                 return pointsInRange;
             }
-
-            // Terminate here if estimated error upper bound is no larger than threshold error
-            double estimatedError = estimateError(this.samples, this.counts,
-                    ncX, ncY, nhalfDimension, rcX, rcY, rhalfWidth, rhalfHeight);
-            if (estimatedError <= totalError) {
-                numberOfNodesStoppedAtLevels[level] ++;
-                //-DEBUG-//
-                System.out.println("--> stopped at level " + level + ", totalError = " + totalError);
-                if (this.samples != null) {
-                    pointsInRange.addAll(this.samples);
-                }
-                return pointsInRange;
-            }
-            //-DEBUG-//
-            System.out.println("totalError = " + totalError);
 
             // Terminate here, if this node's pixel scale is already smaller than the range query's pixel scale
             if ((nhalfDimension * 2 / oneNodeResolution) <= rPixelScale) {
                 numberOfNodesStoppedAtLevels[level] ++;
+                numberOfSamplesStoppedAtLevels[level] += this.samples.size();
                 // add this node's samples
                 pointsInRange.addAll(this.samples);
                 return pointsInRange;
@@ -225,31 +211,33 @@ public class RAQuadTreeAggregator implements IAlgorithm {
             cX = ncX - halfDimension;
             cY = ncY - halfDimension;
             pointsInRange.addAll(this.northWest.dfs(cX, cY, halfDimension,
-                    rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, level + 1, totalError / 4));
+                    rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, level + 1));
 
             // northeast
             cX = ncX + halfDimension;
             cY = ncY - halfDimension;
             pointsInRange.addAll(this.northEast.dfs(cX, cY, halfDimension,
-                    rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, level + 1, totalError / 4));
+                    rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, level + 1));
 
             // southwest
             cX = ncX - halfDimension;
             cY = ncY + halfDimension;
             pointsInRange.addAll(this.southWest.dfs(cX, cY, halfDimension,
-                    rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, level + 1, totalError / 4));
+                    rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, level + 1));
 
             // southeast
             cX = ncX + halfDimension;
             cY = ncY + halfDimension;
             pointsInRange.addAll(this.southEast.dfs(cX, cY, halfDimension,
-                    rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, level + 1, totalError / 4));
+                    rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, level + 1));
 
             return pointsInRange;
         }
 
         /**
          * breadth first search
+         *
+         * explore nodes with higher estimated error first
          *
          * @param ncX
          * @param ncY
@@ -311,6 +299,7 @@ public class RAQuadTreeAggregator implements IAlgorithm {
                 if (estimatedTotalError <= totalError) {
                     numberOfNodesStoppedAtLevels[_level] ++;
                     if (currentNode.samples != null) {
+                        numberOfSamplesStoppedAtLevels[_level] += currentNode.samples.size();
                         pointsInRange.addAll(currentNode.samples);
                     }
                     continue;
@@ -328,6 +317,7 @@ public class RAQuadTreeAggregator implements IAlgorithm {
                 if (currentNode.northWest == null) {
                     numberOfNodesStoppedAtLevels[_level] ++;
                     if (currentNode.samples != null) {
+                        numberOfSamplesStoppedAtLevels[_level] += currentNode.samples.size();
                         pointsInRange.addAll(currentNode.samples);
                     }
                     continue;
@@ -338,6 +328,7 @@ public class RAQuadTreeAggregator implements IAlgorithm {
                 if ((_nhalfDimension * 2 / oneNodeResolution) <= rPixelScale) {
                     numberOfNodesStoppedAtLevels[_level] ++;
                     if (currentNode.samples != null) {
+                        numberOfSamplesStoppedAtLevels[_level] += currentNode.samples.size();
                         pointsInRange.addAll(currentNode.samples);
                     }
                     continue;
@@ -389,6 +380,159 @@ public class RAQuadTreeAggregator implements IAlgorithm {
         }
 
         /**
+         * breadth first search
+         *
+         * explore nodes with higher estimated profit first
+         * - profit means how much more sample percentage can be added if we explore this node
+         *
+         * @param ncX
+         * @param ncY
+         * @param nhalfDimension
+         * @param rcX
+         * @param rcY
+         * @param rhalfWidth
+         * @param rhalfHeight
+         * @param rPixelScale
+         * @param level
+         * @param samplePercentage - stop traversing when result size is roughly samplePercentage of Exact Visualization Sample
+         * @return
+         */
+        public List<Point> bfs(double ncX, double ncY, double nhalfDimension,
+                               double rcX, double rcY, double rhalfWidth, double rhalfHeight,
+                               double rPixelScale, int level, int samplePercentage) {
+
+            class QEntry {
+                int level;
+                double ncX;
+                double ncY;
+                double nhalfDimension;
+                QuadTree node;
+                double estimatedProfit;
+
+                QEntry(int _level, double _ncX, double _ncY, double _nhalfDimension, QuadTree _node, double _estimatedProfit) {
+                    level = _level;
+                    ncX = _ncX;
+                    ncY = _ncY;
+                    nhalfDimension = _nhalfDimension;
+                    node = _node;
+                    estimatedProfit = _estimatedProfit;
+                }
+            }
+
+            List<Point> pointsInRange = new ArrayList<>();
+
+            // explore larger estimatedProfit node first
+            PriorityQueue<QEntry> queue = new PriorityQueue<>((o1, o2) -> (int) (o2.estimatedProfit * 10000 - o1.estimatedProfit * 10000));
+
+            // target sample ratio
+            double targetSampleRatio = (double) samplePercentage / 100.0;
+
+            // add root node
+            queue.add(new QEntry(level, ncX, ncY, nhalfDimension, this, estimateProfit(this.samples, this.counts)));
+
+            while (queue.size() > 0) {
+
+                //-DEBUG-//
+//                System.out.println("===== Priority Queue =====");
+//                for (Iterator<QEntry> iter = queue.iterator(); iter.hasNext(); ) {
+//                    QEntry qEntry = iter.next();
+//                    System.out.println(qEntry.estimatedProfit + ": [" + qEntry.level + "]: " + (qEntry.node.samples==null?0:qEntry.node.samples.size()));
+//                }
+//                System.out.println("===== ============== =====");
+
+                QEntry currentEntry = queue.poll();
+                int _level = currentEntry.level;
+                double _ncX = currentEntry.ncX;
+                double _ncY = currentEntry.ncY;
+                double _nhalfDimension = currentEntry.nhalfDimension;
+                QuadTree currentNode = currentEntry.node;
+                double _estimatedProfit = currentEntry.estimatedProfit;
+
+                //-DEBUG-//
+                //System.out.println("Dequeue: " + _estimatedProfit + ": [" + _level + "]: " + (currentNode.samples==null?0:currentNode.samples.size()));
+
+                // ignore this node if the range does not intersect with it
+                if (!intersectsBBox(_ncX, _ncY, _nhalfDimension, rcX, rcY, rhalfWidth, rhalfHeight)) {
+                    continue;
+                }
+
+                // only do sample percentage driven early stop if the targetSampleRatio is not 1.0
+                if (targetSampleRatio < 1.0) {
+                    // if the (1 - largest estimated profit) is larger than target sample ratio,
+                    // it means the smallest sample ratio of already explored node is larger than target sample ratio,
+                    // stop exploring more nodes, just exhaust the queue and return all samples
+                    if ((1.0 - _estimatedProfit) >= targetSampleRatio) {
+                        numberOfNodesStoppedAtLevels[_level]++;
+                        if (currentNode.samples != null) {
+                            numberOfSamplesStoppedAtLevels[_level] += currentNode.samples.size();
+                            pointsInRange.addAll(currentNode.samples);
+                        }
+                        continue;
+                    }
+                }
+
+                // if there are no children of this node, add samples to result set
+                if (currentNode.northWest == null) {
+                    numberOfNodesStoppedAtLevels[_level] ++;
+                    if (currentNode.samples != null) {
+                        numberOfSamplesStoppedAtLevels[_level] += currentNode.samples.size();
+                        pointsInRange.addAll(currentNode.samples);
+                    }
+                    continue;
+                }
+
+                // if this node's pixel scale is already smaller than the range query's pixel scale,
+                // add samples to result set
+                if ((_nhalfDimension * 2 / oneNodeResolution) <= rPixelScale) {
+                    numberOfNodesStoppedAtLevels[_level] ++;
+                    if (currentNode.samples != null) {
+                        numberOfSamplesStoppedAtLevels[_level] += currentNode.samples.size();
+                        pointsInRange.addAll(currentNode.samples);
+                    }
+                    continue;
+                }
+
+                // Otherwise, add this node's children to the queue
+                double cX, cY;
+                double halfDimension = _nhalfDimension / 2;
+                // northwest
+                if (currentNode.northWest != null) {
+                    cX = _ncX - halfDimension;
+                    cY = _ncY - halfDimension;
+                    queue.add(new QEntry(_level + 1, cX, cY, halfDimension, currentNode.northWest,
+                            estimateProfit(currentNode.northWest.samples, currentNode.northWest.counts)));
+                }
+
+                // northeast
+                if (currentNode.northEast != null) {
+                    cX = _ncX + halfDimension;
+                    cY = _ncY - halfDimension;
+                    queue.add(new QEntry(_level + 1, cX, cY, halfDimension, currentNode.northEast,
+                            estimateProfit(currentNode.northEast.samples, currentNode.northEast.counts)));
+                }
+
+                // southwest
+                if (currentNode.southWest != null) {
+                    cX = _ncX - halfDimension;
+                    cY = _ncY + halfDimension;
+                    queue.add(new QEntry(_level + 1, cX, cY, halfDimension, currentNode.southWest,
+                            estimateProfit(currentNode.southWest.samples, currentNode.southWest.counts)));
+                }
+
+                // southeast
+                if (currentNode.southEast != null) {
+                    cX = _ncX + halfDimension;
+                    cY = _ncY + halfDimension;
+                    queue.add(new QEntry(_level + 1, cX, cY, halfDimension, currentNode.southEast,
+                            estimateProfit(currentNode.southEast.samples, currentNode.southEast.counts)));
+                }
+
+            }
+
+            return pointsInRange;
+        }
+
+        /**
          * Post-order traverse the Quadtree,
          * fill the counts array with count of samples for each level under current node
          */
@@ -413,6 +557,14 @@ public class RAQuadTreeAggregator implements IAlgorithm {
                 this.counts[i] = nwCounts[i] + neCounts[i] + swCounts[i] + seCounts[i];
             }
             this.counts[level] = this.samples.size();
+
+            //-DEBUG-//
+//            if (level < Constants.MAX_ZOOM && this.counts[level] > this.counts[level + 1]) {
+//                System.err.println("[ERROR] this node has more samples than it's next level.");
+//                System.err.println("[" + level + "]: " + this.samples.size());
+//                System.err.println("[" + (level + 1) + "]: " + this.counts[level + 1]);
+//            }
+            //-DEBUG-//
 
             return this.counts;
         }
@@ -580,6 +732,7 @@ public class RAQuadTreeAggregator implements IAlgorithm {
 
     /** For stats */
     static int[] numberOfNodesStoppedAtLevels; // for current query, count how many nodes stopped at a certain level
+    static int[] numberOfSamplesStoppedAtLevels; // for current query, count how many samples stopped at a certain level
 
     /** For estimate error */
     static int exactLevel; // for current query, the exact visualization appears at which level
@@ -630,6 +783,7 @@ public class RAQuadTreeAggregator implements IAlgorithm {
 
         /** For stats */
         numberOfNodesStoppedAtLevels = new int[Constants.MAX_ZOOM + 1];
+        numberOfSamplesStoppedAtLevels = new int[Constants.MAX_ZOOM + 1];
 
         MyMemory.printMemory();
     }
@@ -741,6 +895,40 @@ public class RAQuadTreeAggregator implements IAlgorithm {
         return errorUpperBound;
     }
 
+    public static double estimateProfit(List<Point> samples, int[] counts) {
+
+        int exactSampleSize = Math.max(counts[exactLevel], 1);
+
+        // in worst case how many more points are in exact samples
+        int extraSampleSize = Math.max(exactSampleSize - (samples == null? 0: samples.size()), 0);
+
+        double estimatedProfit = (double) extraSampleSize / (double) exactSampleSize;
+
+        return estimatedProfit;
+    }
+
+    /**
+     * check if point (plain coordinate) in given bbox [(x0, y0) - (x1, y1)]
+     *
+     * Note: (x0, y0) is left-top corner,
+     *       (x1, y1) is right-bottom corner.
+     *
+     * @param point
+     * @param x0
+     * @param y0
+     * @param x1
+     * @param y1
+     * @return
+     */
+    private boolean inRange(Point point, double x0, double y0, double x1, double y1) {
+        if (point.getX() >= x0
+                && point.getX() <= x1
+                && point.getY() >= y1
+                && point.getY() <= y0)
+            return true;
+        return false;
+    }
+
     public byte[] answerQuery(Query query) {
         double lng0 = query.bbox[0];
         double lat0 = query.bbox[1];
@@ -749,8 +937,9 @@ public class RAQuadTreeAggregator implements IAlgorithm {
         int zoom = query.zoom;
         resX = query.resX;
         resY = query.resY;
-        double error = query.error;
+        int error = query.error;
         double totalError = error * resX * resY;
+        int samplePercentage = query.samplePercentage;
 
         MyTimer.startTimer();
         System.out.println("[RA-QuadTree Aggregator] is answering query Q = { " +
@@ -758,7 +947,8 @@ public class RAQuadTreeAggregator implements IAlgorithm {
                 "resolution: [" + resX + " x " + resY + "], " +
                 "zoom: " + zoom + ", " +
                 "error: " + error + ", " +
-                "totalError: " + totalError +
+                "totalError: " + totalError + ", " +
+                "samplePercentage: " + samplePercentage +
                 " } ...");
 
         double iX0 = lngX(lng0);
@@ -772,11 +962,13 @@ public class RAQuadTreeAggregator implements IAlgorithm {
         double rhalfHeight = (iY0 - iY1) / 2;
 
         System.out.println("[RA-QuadTree Aggregator] starting range search on QuadTree with: \n" +
+                "bbox = [(" + iX0 + ", " + iY0 + "), (" + iX1 + ", " + iY1 + ")] ; \n" +
                 "range = [(" + rcX + ", " + rcY + "), " + rhalfWidth + ", " + rhalfHeight + "] ; \n" +
                 "pixelScale = " + pixelScale + ";");
 
         /** For stats*/
         for (int i = 0; i <= Constants.MAX_ZOOM; i ++) numberOfNodesStoppedAtLevels[i] = 0;
+        for (int i = 0; i <= Constants.MAX_ZOOM; i ++) numberOfSamplesStoppedAtLevels[i] = 0;
 
         /** For estimate error */
         // find the level where exact visualization samples are
@@ -786,8 +978,28 @@ public class RAQuadTreeAggregator implements IAlgorithm {
         //-DEBUG-//
 
         MyTimer.startTimer();
-        List<Point> points = this.quadTree.bfs(0.5, 0.5, 0.5,
-                rcX, rcY, rhalfWidth, rhalfHeight, pixelScale, 0, totalError);
+        List<Point> points;
+        // if given samplePercentage parameter, use it to do bfs.
+        if (samplePercentage > 0) {
+            System.out.println("[RA-QuadTree Aggregator] is using Sample Percentage driven BFS.");
+            points = this.quadTree.bfs(0.5, 0.5, 0.5,
+                    rcX, rcY, rhalfWidth, rhalfHeight, pixelScale, 0, samplePercentage);
+        }
+        // otherwise,
+        else {
+            // if error requirement is 0, use exact dfs.
+            if (error == 0) {
+                System.out.println("[RA-QuadTree Aggregator] is using exact DFS.");
+                points = this.quadTree.dfs(0.5, 0.5, 0.5,
+                        rcX, rcY, rhalfWidth, rhalfHeight, pixelScale, 0);
+            }
+            // if error requirement is not 0, use error threshold parameter to do bfs.
+            else {
+                System.out.println("[RA-QuadTree Aggregator] is using Error driven BFS.");
+                points = this.quadTree.bfs(0.5, 0.5, 0.5,
+                        rcX, rcY, rhalfWidth, rhalfHeight, pixelScale, 0, totalError);
+            }
+        }
         MyTimer.stopTimer();
         double treeTime = MyTimer.durationSeconds();
 
@@ -804,7 +1016,7 @@ public class RAQuadTreeAggregator implements IAlgorithm {
             lng = xLng(point.getX());
             lat = yLat(point.getY());
             messageBuilder.add(lng, lat);
-            resultSize ++;
+            resultSize++;
         }
         MyTimer.stopTimer();
         double buildBinaryTime = MyTimer.durationSeconds();
@@ -818,6 +1030,10 @@ public class RAQuadTreeAggregator implements IAlgorithm {
         System.out.println("[RA-QuadTree Aggregator] ---- # of nodes stopping at each level ----");
         for (int i = 0; i <= Constants.MAX_ZOOM; i ++) {
             System.out.println("Level " + i + ": " + numberOfNodesStoppedAtLevels[i]);
+        }
+        System.out.println("[RA-QuadTree Aggregator] ---- # of samples stopping at each level ----");
+        for (int i = 0; i <= Constants.MAX_ZOOM; i ++) {
+            System.out.println("Level " + i + ": " + numberOfSamplesStoppedAtLevels[i]);
         }
         return messageBuilder.getBuffer();
     }

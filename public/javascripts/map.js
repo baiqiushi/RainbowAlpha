@@ -64,7 +64,8 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
       resX: 1920,
       resY: 978,
       aggregator: "QuadTreeAggregator",
-      error: 0
+      error: 0,
+      samplePercentage: 0
     };
 
     $scope.ws = new WebSocket("ws://" + location.host + "/ws");
@@ -97,6 +98,10 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
 
       if (e.error) {
         $scope.query.error = e.error;
+      }
+
+      if (e.samplePercentage) {
+        $scope.query.samplePercentage = e.samplePercentage;
       }
 
       $scope.query.aggregator = $scope.scatterType;
@@ -196,6 +201,16 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
         });
 
         moduleManager.subscribeEvent(moduleManager.EVENT.CHANGE_ERROR, function(e) {
+          switch ($scope.mode) {
+            case "frontend":
+              break;
+            case "middleware":
+              $scope.sendQuery(e);
+              break;
+          }
+        });
+
+        moduleManager.subscribeEvent(moduleManager.EVENT.CHANGE_SAMPLE_PERCENTAGE, function(e) {
           switch ($scope.mode) {
             case "frontend":
               break;

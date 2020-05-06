@@ -102,6 +102,8 @@ public class Agent extends AbstractActor {
         Constants.DB_TABLENAME = this.config.getString("db.tablename");
 
         Constants.MSG_TYPE = this.config.getInt("message.type");
+
+        Constants.TILE_RESOLUTION = this.config.getInt("tile.resolution");
     }
 
     public static Props getProps() {

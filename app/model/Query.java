@@ -11,5 +11,6 @@ public class Query {
     public int resX; // frontend resolution x
     public int resY; // frontend resolution y
     public String aggregator; // for DataAggregator and QuadTreeAggregators: "gl-pixel" / "leaflet" / "deck-gl"
-    public double error; // error threshold
+    public int error; // error threshold
+    public int samplePercentage; // target sample percentage (1 ~ 100), 0 - disabled
 }

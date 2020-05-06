@@ -362,6 +362,37 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
         $scope.selectErrorLabel.style.left = '100px';
         document.body.appendChild($scope.selectErrorLabel);
 
+        // Sample Percentage Select
+        $scope.selectSamplePercentage = document.createElement("select");
+        $scope.selectSamplePercentage.title = "SamplePercentage";
+        $scope.selectSamplePercentage.style.position = 'fixed';
+        $scope.selectSamplePercentage.style.top = '225px';
+        $scope.selectSamplePercentage.style.left = '8px';
+        for (let i = 0; i <= 10; i += 2) {
+          let option = document.createElement("option");
+          option.text = "" + i;
+          $scope.selectSamplePercentage.add(option);
+        }
+        for (let i = 15; i <= 100; i += 5) {
+          let option = document.createElement("option");
+          option.text = "" + i;
+          $scope.selectSamplePercentage.add(option);
+        }
+
+        $scope.selectSamplePercentage.value = "0";
+        document.body.appendChild($scope.selectSamplePercentage);
+        $scope.selectSamplePercentage.addEventListener("change", function () {
+          moduleManager.publishEvent(moduleManager.EVENT.CHANGE_SAMPLE_PERCENTAGE,
+            {samplePercentage: $scope.selectSamplePercentage.value});
+        });
+        $scope.selectSamplePercentageLabel = document.createElement("label");
+        $scope.selectSamplePercentageLabel.innerHTML = "Sample Percentage";
+        $scope.selectSamplePercentageLabel.htmlFor ="SamplePercentage";
+        $scope.selectSamplePercentageLabel.style.position = 'fixed';
+        $scope.selectSamplePercentageLabel.style.top = '225px';
+        $scope.selectSamplePercentageLabel.style.left = '100px';
+        document.body.appendChild($scope.selectSamplePercentageLabel);
+
         // Button for recording actions
         $scope.buttonRecord = document.createElement("button");
         $scope.buttonRecord.id = "record";
