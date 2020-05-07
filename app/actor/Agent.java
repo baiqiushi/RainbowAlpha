@@ -422,17 +422,21 @@ public class Agent extends AbstractActor {
                 case "da":
                     algorithm = new DataAggregator(query.aggregator);
                     break;
-                case "quadtreeaggregator":
-                case "qta":
+                case "quadtree":
+                case "qt":
                     algorithm = new QuadTreeAggregator(query.resX, query.resY);
                     break;
-                case "gquadtreeaggregator":
-                case "gqta":
-                    algorithm = new GQuadTreeAggregator();
+                case "gquadtree":
+                case "gqt":
+                    algorithm = new GQuadTree();
                     break;
-                case "raquadtreeaggregator":
-                case "raqta":
-                    algorithm = new RAQuadTreeAggregator();
+                case "raquadtree":
+                case "raqt":
+                    algorithm = new RAQuadTree();
+                    break;
+                case "raquadtreesnap":
+                case "raqts":
+                    algorithm = new RAQuadTreeSnap();
                     break;
                 default:
                     return null;

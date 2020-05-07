@@ -31,7 +31,7 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
             $scope.disableSearchButton = false;
         });
 
-        $scope.algorithms = ["DataExplorer", "DataAggregator", "QuadTreeAggregator", "GQuadTreeAggregator", "RAQuadTreeAggregator"];
+        $scope.algorithms = ["DataExplorer", "DataAggregator", "QuadTree", "GQuadTree", "RAQuadTree", "RAQuadTreeSnap"];
         $scope.mwVisualizationTypes = ["scatter", "heat"];
         $scope.feVisualizationTypes = ["scatter", "heat"];
         $scope.scatterTypes = ["gl-pixel", "gl-raster", "leaflet", "deck-gl"];

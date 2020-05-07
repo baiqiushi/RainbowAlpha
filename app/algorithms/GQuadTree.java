@@ -14,7 +14,7 @@ import java.util.*;
 
 import static util.Mercator.*;
 
-public class GQuadTreeAggregator implements IAlgorithm {
+public class GQuadTree implements IAlgorithm {
 
     public static double highestLevelNodeDimension;
     // resolution of each node (similar to a tile in map systems), e.g. 512
@@ -388,7 +388,7 @@ public class GQuadTreeAggregator implements IAlgorithm {
     Map<String, Double> timing;
     //-Timing-//
 
-    public GQuadTreeAggregator() {
+    public GQuadTree() {
         this.quadTree = new QuadTree();
 
         oneNodeResolution = Constants.TILE_RESOLUTION;

@@ -15,7 +15,7 @@ public class DeckGLRenderer implements IRenderer {
             UnsignedByte.toByte(221),
             UnsignedByte.toByte(221),
             UnsignedByte.toByte(221)
-    }; // white
+    }; // gray
 
     int radiusInPixels;
 

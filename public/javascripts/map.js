@@ -65,7 +65,7 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
       resY: 978,
       aggregator: "QuadTreeAggregator",
       error: 0,
-      samplePercentage: 0
+      samplePercentage: 100
     };
 
     $scope.ws = new WebSocket("ws://" + location.host + "/ws");
@@ -896,7 +896,7 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
               let point = data[i];
               points.push([point[0], point[1], i]);
             }
-            $scope.scatterLayer.appendData(points);
+            $scope.scatterLayer.setData(points);
             break;
           case "leaflet":
             $scope.scatterLayer.setData($scope.points);
