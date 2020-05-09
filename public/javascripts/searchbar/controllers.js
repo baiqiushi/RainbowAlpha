@@ -331,11 +331,49 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
         $scope.selectOpacityLabel.style.left = '60px';
         document.body.appendChild($scope.selectOpacityLabel);
 
+        // Sample Size Select
+        $scope.selectSampleSize = document.createElement("select");
+        $scope.selectSampleSize.title = "SampleSize";
+        $scope.selectSampleSize.style.position = 'fixed';
+        $scope.selectSampleSize.style.top = '200px';
+        $scope.selectSampleSize.style.left = '8px';
+
+        option = document.createElement("option");
+        option.text = "0";
+        option.value = "0";
+        $scope.selectSampleSize.add(option);
+        for (let i = 25; i <= 500; i += 25) {
+          let option = document.createElement("option");
+          option.text = i + "K";
+          option.value = "" + i * 1000;
+          $scope.selectSampleSize.add(option);
+        }
+        for (let i = 1.0; i >= 5.0; i += 0.5) {
+          let option = document.createElement("option");
+          option.text = i + "M";
+          option.value = "" + Number(i * 1000000);
+          $scope.selectSampleSize.add(option);
+        }
+
+        $scope.selectSampleSize.value = "0";
+        document.body.appendChild($scope.selectSampleSize);
+        $scope.selectSampleSize.addEventListener("change", function () {
+          moduleManager.publishEvent(moduleManager.EVENT.CHANGE_SAMPLE_SIZE,
+            {sampleSize: $scope.selectSampleSize.value});
+        });
+        $scope.selectSampleSizeLabel = document.createElement("label");
+        $scope.selectSampleSizeLabel.innerHTML = " Sample Size";
+        $scope.selectSampleSizeLabel.htmlFor ="SampleSize";
+        $scope.selectSampleSizeLabel.style.position = 'fixed';
+        $scope.selectSampleSizeLabel.style.top = '200px';
+        $scope.selectSampleSizeLabel.style.left = '68px';
+        document.body.appendChild($scope.selectSampleSizeLabel);
+
         // Sample Percentage Select
         $scope.selectSamplePercentage = document.createElement("select");
         $scope.selectSamplePercentage.title = "SamplePercentage";
         $scope.selectSamplePercentage.style.position = 'fixed';
-        $scope.selectSamplePercentage.style.top = '200px';
+        $scope.selectSamplePercentage.style.top = '225px';
         $scope.selectSamplePercentage.style.left = '8px';
 
         for (let i = 100; i >= 15; i -= 5) {
@@ -356,43 +394,12 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
             {samplePercentage: $scope.selectSamplePercentage.value});
         });
         $scope.selectSamplePercentageLabel = document.createElement("label");
-        $scope.selectSamplePercentageLabel.innerHTML = "% Sample";
+        $scope.selectSamplePercentageLabel.innerHTML = "% Sample Ratio";
         $scope.selectSamplePercentageLabel.htmlFor ="SamplePercentage";
         $scope.selectSamplePercentageLabel.style.position = 'fixed';
-        $scope.selectSamplePercentageLabel.style.top = '200px';
+        $scope.selectSamplePercentageLabel.style.top = '225px';
         $scope.selectSamplePercentageLabel.style.left = '60px';
         document.body.appendChild($scope.selectSamplePercentageLabel);
-
-        // Error Select
-        // $scope.selectError = document.createElement("select");
-        // $scope.selectError.title = "Error";
-        // $scope.selectError.style.position = 'fixed';
-        // $scope.selectError.style.top = '225px';
-        // $scope.selectError.style.left = '8px';
-        // for (let i = 0; i <= 200; i += 10) {
-        //   let option = document.createElement("option");
-        //   option.text = "" + i;
-        //   $scope.selectError.add(option);
-        // }
-        // for (let i = 250; i <= 10000; i += 50) {
-        //   let option = document.createElement("option");
-        //   option.text = "" + i;
-        //   $scope.selectError.add(option);
-        // }
-        //
-        // $scope.selectError.value = "0";
-        // document.body.appendChild($scope.selectError);
-        // $scope.selectError.addEventListener("change", function () {
-        //   moduleManager.publishEvent(moduleManager.EVENT.CHANGE_ERROR,
-        //     {error: $scope.selectError.value});
-        // });
-        // $scope.selectErrorLabel = document.createElement("label");
-        // $scope.selectErrorLabel.innerHTML = "Error";
-        // $scope.selectErrorLabel.htmlFor ="error";
-        // $scope.selectErrorLabel.style.position = 'fixed';
-        // $scope.selectErrorLabel.style.top = '225px';
-        // $scope.selectErrorLabel.style.left = '75px';
-        // document.body.appendChild($scope.selectErrorLabel);
 
         // Button for recording actions
         $scope.buttonRecord = document.createElement("button");

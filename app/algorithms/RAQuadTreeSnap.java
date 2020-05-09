@@ -399,7 +399,7 @@ public class RAQuadTreeSnap implements IAlgorithm {
         }
 
         public void print() {
-            System.out.println("=================== RA-QuadTree ===================");
+            System.out.println("=================== RA-QuadTree-Snap ===================");
             Queue<Pair<Integer, QuadTree>> queue = new LinkedList<>();
             queue.add(new Pair<>(0, this));
             int currentLevel = -1;
@@ -431,7 +431,7 @@ public class RAQuadTreeSnap implements IAlgorithm {
         }
 
         public void statistics() {
-            System.out.println("=================== RA-QuadTree Statistics ===================");
+            System.out.println("=================== RA-QuadTree-Snap Statistics ===================");
             System.out.println("level,    # samples,    # nodes,    # samples/node,    min # samples,    max # samples");
             Queue<Pair<Integer, QuadTree>> queue = new LinkedList<>();
             queue.add(new Pair<>(0, this));
@@ -524,28 +524,28 @@ public class RAQuadTreeSnap implements IAlgorithm {
                 }
             }
 
-            System.out.println("=================== GQuadTree Histogram for Samples on Intermediate Nodes ===================");
+            System.out.println("=================== RA-QuadTree-Snap Histogram for Samples on Intermediate Nodes ===================");
             System.out.println("# of samples on node,    # of nodes");
             for (int i = 0; i < 100; i ++) {
                 System.out.println(i + ",    " + histogramForSamplesOnIntermediateNodes[i]);
             }
             System.out.println(">=100,    " + histogramForSamplesOnIntermediateNodes[100]);
 
-            System.out.println("=================== GQuadTree Histogram for Raw Points on Leaf Nodes ===================");
+            System.out.println("=================== RA-QuadTree-Snap Histogram for Raw Points on Leaf Nodes ===================");
             System.out.println("# of raw points on node,    # of nodes");
             for (int i = 0; i < 100; i ++) {
                 System.out.println(i + ",    " + histogramForRawPointsOnLeafNodes[i]);
             }
             System.out.println(">=100,    " + histogramForRawPointsOnLeafNodes[100]);
 
-            System.out.println("=================== GQuadTree Histogram for Samples on Intermediate Nodes at level " + someLevel + " ===================");
+            System.out.println("=================== RA-QuadTree-Snap Histogram for Samples on Intermediate Nodes at level " + someLevel + " ===================");
             System.out.println("# of samples on node,    # of nodes");
             for (int i = 0; i < 100; i ++) {
                 System.out.println(i + ",    " + histogramForSamplesOnIntermediateNodesAtLevel[i]);
             }
             System.out.println(">=100,    " + histogramForSamplesOnIntermediateNodesAtLevel[100]);
 
-            System.out.println("=================== GQuadTree Histogram for Raw Points on Intermediate Nodes at level " + someLevel + " ===================");
+            System.out.println("=================== RA-QuadTree-Snap Histogram for Raw Points on Intermediate Nodes at level " + someLevel + " ===================");
             System.out.println("# of raw points on node,    # of nodes");
             for (int i = 0; i < 100; i ++) {
                 System.out.println((0 + i*10) + "~" + (9 + i*10) + ",    " + histogramForRawPointsOnIntermediateNodesAtLevel[i]);
@@ -596,7 +596,7 @@ public class RAQuadTreeSnap implements IAlgorithm {
     }
 
     public void load(List<Point> points) {
-        System.out.println("[RA-QuadTree Aggregator] loading " + points.size() + " points ... ...");
+        System.out.println("[RA-QuadTree-Snap] loading " + points.size() + " points ... ...");
 
         MyTimer.startTimer();
         this.totalNumberOfPoints += points.size();
@@ -612,18 +612,18 @@ public class RAQuadTreeSnap implements IAlgorithm {
         MyTimer.stopTimer();
         double insertTime = MyTimer.durationSeconds();
         this.totalStoredNumberOfPoints += count;
-        System.out.println("[RA-QuadTree Aggregator] inserted " + count + " points and skipped " + skip + " points.");
-        System.out.println("[RA-QuadTree Aggregator] insertion time: " + insertTime + " seconds.");
+        System.out.println("[RA-QuadTree-Snap] inserted " + count + " points and skipped " + skip + " points.");
+        System.out.println("[RA-QuadTree-Snap] insertion time: " + insertTime + " seconds.");
 
         // build counts array for each node in the QuadTree
         MyTimer.startTimer();
         int[] rootCounts = this.quadTree.buildCounts(0);
         MyTimer.stopTimer();
         double buildCountsTime = MyTimer.durationSeconds();
-        System.out.println("[RA-QuadTree Aggregator] built counts array for each node is done!");
-        System.out.println("[RA-QuadTree Aggregator] counts building time: " + buildCountsTime + " seconds.");
+        System.out.println("[RA-QuadTree-Snap] built counts array for each node is done!");
+        System.out.println("[RA-QuadTree-Snap] counts building time: " + buildCountsTime + " seconds.");
         //-DEBUG-//
-        System.out.println("[RA-QuadTree Aggregator] root node counts array: ");
+        System.out.println("[RA-QuadTree-Snap] root node counts array: ");
         for (int i = 0; i < Constants.MAX_ZOOM; i ++) {
             System.out.println("Level " + i + ": " + rootCounts[i]);
         }
@@ -633,18 +633,18 @@ public class RAQuadTreeSnap implements IAlgorithm {
         double loadTime = MyTimer.durationSeconds();
 
         if (keepTiming) timing.put("total", timing.get("total") + loadTime);
-        System.out.println("[RA-QuadTree Aggregator] loading is done!");
-        System.out.println("[RA-QuadTree Aggregator] loading time: " + loadTime + " seconds.");
+        System.out.println("[RA-QuadTree-Snap] loading is done!");
+        System.out.println("[RA-QuadTree-Snap] loading time: " + loadTime + " seconds.");
         if (keepTiming) this.printTiming();
 
         MyMemory.printMemory();
 
         //-DEBUG-//
         System.out.println("==== Until now ====");
-        System.out.println("RA-QuadTree has processed " + this.totalNumberOfPoints + " points.");
-        System.out.println("RA-QuadTree has stored " + this.totalStoredNumberOfPoints + " points.");
-        System.out.println("RA-QuadTree has skipped " + skip + " points.");
-        System.out.println("RA-QuadTree has generated " + nodesCount + " nodes.");
+        System.out.println("RA-QuadTree-Snap has processed " + this.totalNumberOfPoints + " points.");
+        System.out.println("RA-QuadTree-Snap has stored " + this.totalStoredNumberOfPoints + " points.");
+        System.out.println("RA-QuadTree-Snap has skipped " + skip + " points.");
+        System.out.println("RA-QuadTree-Snap has generated " + nodesCount + " nodes.");
         this.quadTree.statistics();
         //this.quadTree.histograms(12);
         //-DEBUG-//
@@ -677,7 +677,7 @@ public class RAQuadTreeSnap implements IAlgorithm {
         int samplePercentage = query.samplePercentage;
 
         MyTimer.startTimer();
-        System.out.println("[RA-QuadTree Aggregator] is answering query Q = { " +
+        System.out.println("[RA-QuadTree-Snap] is answering query Q = { " +
                 "range: [" + lng0 + ", " + lat0 + "] ~ [" + lng1 + ", " + lat1 + "], " +
                 "resolution: [" + resX + " x " + resY + "], " +
                 "zoom: " + zoom + ", " +
@@ -694,7 +694,7 @@ public class RAQuadTreeSnap implements IAlgorithm {
         double rhalfWidth = (iX1 - iX0) / 2;
         double rhalfHeight = (iY0 - iY1) / 2;
 
-        System.out.println("[RA-QuadTree Aggregator] starting range search on QuadTree with: \n" +
+        System.out.println("[RA-QuadTree-Snap] starting range search on QuadTree with: \n" +
                 "bbox = [(" + iX0 + ", " + iY0 + "), (" + iX1 + ", " + iY1 + ")] ; \n" +
                 "range = [(" + rcX + ", " + rcY + "), " + rhalfWidth + ", " + rhalfHeight + "] ; \n" +
                 "pixelScale = " + pixelScale + ";");
@@ -713,14 +713,14 @@ public class RAQuadTreeSnap implements IAlgorithm {
         MyTimer.startTimer();
         List<Point> points;
         // if given samplePercentage parameter, use it to do bfs.
-        if (samplePercentage > 0) {
-            System.out.println("[RA-QuadTree Aggregator] is using Sample Percentage driven BFS.");
+        if (samplePercentage > 0 && samplePercentage < 100) {
+            System.out.println("[RA-QuadTree-Snap] is using Sample Percentage driven BFS.");
             points = this.quadTree.bfs(0.5, 0.5, 0.5,
                     rcX, rcY, rhalfWidth, rhalfHeight, pixelScale, 0, samplePercentage);
         }
         // otherwise,
         else {
-            System.out.println("[RA-QuadTree Aggregator] is using exact DFS.");
+            System.out.println("[RA-QuadTree-Snap] is using exact DFS.");
             points = this.quadTree.dfs(0.5, 0.5, 0.5,
                     rcX, rcY, rhalfWidth, rhalfHeight, pixelScale, 0);
         }
@@ -728,8 +728,8 @@ public class RAQuadTreeSnap implements IAlgorithm {
         double treeTime = MyTimer.durationSeconds();
 
         MyTimer.temporaryTimer.put("treeTime", treeTime);
-        System.out.println("[RA-QuadTree Aggregator] tree search got " + points.size() + " data points.");
-        System.out.println("[RA-QuadTree Aggregator] tree search time: " + treeTime + " seconds.");
+        System.out.println("[RA-QuadTree-Snap] tree search got " + points.size() + " data points.");
+        System.out.println("[RA-QuadTree-Snap] tree search time: " + treeTime + " seconds.");
 
         // build binary result message
         MyTimer.startTimer();
@@ -746,16 +746,16 @@ public class RAQuadTreeSnap implements IAlgorithm {
         double buildBinaryTime = MyTimer.durationSeconds();
         MyTimer.temporaryTimer.put("aggregateTime", buildBinaryTime);
 
-        System.out.println("[RA-QuadTree Aggregator] build binary result with  " + resultSize + " points.");
-        System.out.println("[RA-QuadTree Aggregator] build binary result time: " + buildBinaryTime + " seconds.");
+        System.out.println("[RA-QuadTree-Snap] build binary result with  " + resultSize + " points.");
+        System.out.println("[RA-QuadTree-Snap] build binary result time: " + buildBinaryTime + " seconds.");
 
         MyTimer.stopTimer();
-        System.out.println("[RA-QuadTree Aggregator] answer query total time: " + MyTimer.durationSeconds() + " seconds.");
-        System.out.println("[RA-QuadTree Aggregator] ---- # of nodes stopping at each level ----");
+        System.out.println("[RA-QuadTree-Snap] answer query total time: " + MyTimer.durationSeconds() + " seconds.");
+        System.out.println("[RA-QuadTree-Snap] ---- # of nodes stopping at each level ----");
         for (int i = 0; i <= Constants.MAX_ZOOM; i ++) {
             System.out.println("Level " + i + ": " + numberOfNodesStoppedAtLevels[i]);
         }
-        System.out.println("[RA-QuadTree Aggregator] ---- # of samples stopping at each level ----");
+        System.out.println("[RA-QuadTree-Snap] ---- # of samples stopping at each level ----");
         for (int i = 0; i <= Constants.MAX_ZOOM; i ++) {
             System.out.println("Level " + i + ": " + numberOfSamplesStoppedAtLevels[i]);
         }

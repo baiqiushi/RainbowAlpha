@@ -64,7 +64,7 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
       resX: 1920,
       resY: 978,
       aggregator: "QuadTreeAggregator",
-      error: 0,
+      sampleSize: 0,
       samplePercentage: 100
     };
 
@@ -96,8 +96,8 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
         $scope.query.algorithm = e.algorithm;
       }
 
-      if (e.error) {
-        $scope.query.error = e.error;
+      if (e.sampleSize) {
+        $scope.query.sampleSize = e.sampleSize;
       }
 
       if (e.samplePercentage) {
@@ -200,7 +200,7 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
           }
         });
 
-        moduleManager.subscribeEvent(moduleManager.EVENT.CHANGE_ERROR, function(e) {
+        moduleManager.subscribeEvent(moduleManager.EVENT.CHANGE_SAMPLE_SIZE, function(e) {
           switch ($scope.mode) {
             case "frontend":
               break;
