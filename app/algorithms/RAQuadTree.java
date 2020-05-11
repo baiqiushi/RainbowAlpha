@@ -426,6 +426,174 @@ public class RAQuadTree implements IAlgorithm {
         }
 
         /**
+         * breadth first search
+         *
+         * - find the perfect visualization level first
+         * - then do random sampling
+         *
+         * @param ncX
+         * @param ncY
+         * @param nhalfDimension
+         * @param rcX
+         * @param rcY
+         * @param rhalfWidth
+         * @param rhalfHeight
+         * @param rPixelScale
+         * @param level
+         * @param sampleSize - return results only with this sample size
+         * @return
+         */
+        public List<Point> randomSampleAfterTraverse(double ncX, double ncY, double nhalfDimension,
+                                               double rcX, double rcY, double rhalfWidth, double rhalfHeight,
+                                               double rPixelScale, int level, int sampleSize) {
+
+            class QEntry {
+                int level;
+                double ncX;
+                double ncY;
+                double nhalfDimension;
+                QuadTree node;
+
+                QEntry(int _level, double _ncX, double _ncY, double _nhalfDimension, QuadTree _node) {
+                    level = _level;
+                    ncX = _ncX;
+                    ncY = _ncY;
+                    nhalfDimension = _nhalfDimension;
+                    node = _node;
+                }
+            }
+
+            List<Point> result = new ArrayList<>();
+
+            Queue<QEntry> traverseQueue = new LinkedList<>();
+            Queue<QEntry> sampleQueue = new LinkedList<>();
+            // add root node
+            traverseQueue.add(new QEntry(level, ncX, ncY, nhalfDimension, this));
+            // the total result size for a perfect visualization
+            int perfectResultSize = 0;
+
+            // traverse the tree, expand all nodes until to perfect visualization level
+            // keep how many nodes left in the queue that need to be expanded
+            int toBeExpandedNodes = 1; // only root now
+            while (toBeExpandedNodes > 0) {
+
+                QEntry currentEntry = traverseQueue.poll();
+                int _level = currentEntry.level;
+                double _ncX = currentEntry.ncX;
+                double _ncY = currentEntry.ncY;
+                double _nhalfDimension = currentEntry.nhalfDimension;
+                QuadTree currentNode = currentEntry.node;
+
+                // current node expanded
+                toBeExpandedNodes --;
+
+                // ignore this node if the range does not intersect with it
+                if (!intersectsBBox(_ncX, _ncY, _nhalfDimension, rcX, rcY, rhalfWidth, rhalfHeight)) {
+                    continue;
+                }
+
+                // this node is already a leaf,
+                // count all samples on this node as in the perfectResultSize
+                if (currentNode.northWest == null) {
+                    if (currentNode.samples != null) {
+                        perfectResultSize += currentNode.samples.size();
+                        sampleQueue.add(currentEntry);
+                    }
+                    continue;
+                }
+
+                // if this node's pixel scale is already smaller than the range query's pixel scale,
+                // count all samples on this node as in the perfectResultSize
+                if ((_nhalfDimension * 2 / oneNodeResolution) <= rPixelScale) {
+                    if (currentNode.samples != null) {
+                        perfectResultSize += currentNode.samples.size();
+                        sampleQueue.add(currentEntry);
+                    }
+                    continue;
+                }
+
+                // Otherwise, add this node's children to the queue
+                double cX, cY;
+                double halfDimension = _nhalfDimension / 2;
+                double estimatedError;
+                // northwest
+                if (currentNode.northWest != null) {
+                    cX = _ncX - halfDimension;
+                    cY = _ncY - halfDimension;
+                    traverseQueue.add(new QEntry(_level + 1, cX, cY, halfDimension, currentNode.northWest));
+                    toBeExpandedNodes ++;
+                }
+
+                // northeast
+                if (currentNode.northEast != null) {
+                    cX = _ncX + halfDimension;
+                    cY = _ncY - halfDimension;
+                    traverseQueue.add(new QEntry(_level + 1, cX, cY, halfDimension, currentNode.northEast));
+                    toBeExpandedNodes ++;
+                }
+
+                // southwest
+                if (currentNode.southWest != null) {
+                    cX = _ncX - halfDimension;
+                    cY = _ncY + halfDimension;
+                    traverseQueue.add(new QEntry(_level + 1, cX, cY, halfDimension, currentNode.southWest));
+                    toBeExpandedNodes ++;
+                }
+
+                // southeast
+                if (currentNode.southEast != null) {
+                    cX = _ncX + halfDimension;
+                    cY = _ncY + halfDimension;
+                    traverseQueue.add(new QEntry(_level + 1, cX, cY, halfDimension, currentNode.southEast));
+                    toBeExpandedNodes ++;
+                }
+            }
+
+            //-DEBUG-//
+            System.out.println("sampleQueue.size = " + sampleQueue.size());
+            System.out.println("perfectResultSize = " + perfectResultSize);
+            System.out.println("sampleSize = " + sampleSize);
+            //-DEBUG-//
+
+            // if required sample size is larger than perfect result size,
+            // return all result
+            if (sampleSize >= perfectResultSize) {
+                while (sampleQueue.size() > 0) {
+                    QEntry currentEntry = sampleQueue.poll();
+                    int _level = currentEntry.level;
+                    QuadTree currentNode = currentEntry.node;
+                    numberOfNodesStoppedAtLevels[_level]++;
+                    if (currentNode.samples != null) {
+                        numberOfSamplesStoppedAtLevels[_level] += currentNode.samples.size();
+                        result.addAll(currentNode.samples);
+                    }
+                }
+            }
+            else {
+                // exhaust the perfect level nodes left in the queue,
+                // do a random sampling
+                double sampleRatio = (double) sampleSize / (double) perfectResultSize;
+                int localSampleSize;
+                while (sampleQueue.size() > 0) {
+                    QEntry currentEntry = sampleQueue.poll();
+                    int _level = currentEntry.level;
+                    QuadTree currentNode = currentEntry.node;
+                    numberOfNodesStoppedAtLevels[_level]++;
+                    if (currentNode.samples != null) {
+                        for (Point p: currentNode.samples) {
+                            if (flipCoin(sampleRatio)) {
+                                result.add(p);
+                                numberOfSamplesStoppedAtLevels[_level] ++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        /**
          * breadth first search with sampling in traversal
          *
          * explore nodes with higher estimated profit first
@@ -935,8 +1103,16 @@ public class RAQuadTree implements IAlgorithm {
         // if given sampleSize parameter, use it to do sampleAfterTraversal
         if (sampleSize > 0) {
             System.out.println("[RA-QuadTree] is doing a Sample-After-Traversal with sampleSize = " + sampleSize + ".");
-            points = this.quadTree.sampleAfterTraverse(0.5, 0.5, 0.5,
-                    rcX, rcY, rhalfWidth, rhalfHeight, pixelScale, 0, sampleSize);
+            if (Constants.SAMPLING_METHOD.equalsIgnoreCase("random")) {
+                System.out.println(" ---- Random Sampling ----");
+                points = this.quadTree.randomSampleAfterTraverse(0.5, 0.5, 0.5,
+                        rcX, rcY, rhalfWidth, rhalfHeight, pixelScale, 0, sampleSize);
+            }
+            else {
+                System.out.println(" ---- Stratified Sampling ----");
+                points = this.quadTree.sampleAfterTraverse(0.5, 0.5, 0.5,
+                        rcX, rcY, rhalfWidth, rhalfHeight, pixelScale, 0, sampleSize);
+            }
         }
         // otherwise if given sampleRatio, use it to do sampleInTraversal
         else if (samplePercentage > 0 && samplePercentage < 100) {

@@ -104,6 +104,8 @@ public class Agent extends AbstractActor {
         Constants.MSG_TYPE = this.config.getInt("message.type");
 
         Constants.TILE_RESOLUTION = this.config.getInt("tile.resolution");
+
+        Constants.SAMPLING_METHOD = this.config.getString("sampling.method");
     }
 
     public static Props getProps() {
