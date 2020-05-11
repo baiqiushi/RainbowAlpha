@@ -573,7 +573,6 @@ public class RAQuadTree implements IAlgorithm {
                 // exhaust the perfect level nodes left in the queue,
                 // do a random sampling
                 double sampleRatio = (double) sampleSize / (double) perfectResultSize;
-                int localSampleSize;
                 while (sampleQueue.size() > 0) {
                     QEntry currentEntry = sampleQueue.poll();
                     int _level = currentEntry.level;
