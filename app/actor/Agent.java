@@ -106,6 +106,8 @@ public class Agent extends AbstractActor {
         Constants.TILE_RESOLUTION = this.config.getInt("tile.resolution");
 
         Constants.SAMPLING_METHOD = this.config.getString("sampling.method");
+
+        Constants.STOP_CRITERIA = this.config.getDouble("stop.criteria");
     }
 
     public static Props getProps() {

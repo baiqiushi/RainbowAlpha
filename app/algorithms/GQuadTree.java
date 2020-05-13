@@ -84,8 +84,8 @@ public class GQuadTree implements IAlgorithm {
             if (this.samples == null && this.northWest == null) {
                 this.samples = new ArrayList<>();
                 this.samples.add(point);
-                this.rendering = aggregator.createRendering(oneNodeResolution);
-                aggregator.render(this.rendering, cX, cY, halfDimension, oneNodeResolution, point);
+                this.rendering = aggregator.createRendering(oneNodeResolution, true);
+                aggregator.render(this.rendering, cX, cY, halfDimension, oneNodeResolution, true, point);
                 this.count = 1;
                 return true;
             }
@@ -109,7 +109,7 @@ public class GQuadTree implements IAlgorithm {
             }
 
             // update the rendering of this node
-            boolean isDifferent = aggregator.render(this.rendering, cX, cY, halfDimension, oneNodeResolution, point);
+            boolean isDifferent = aggregator.render(this.rendering, cX, cY, halfDimension, oneNodeResolution, true, point);
             // if new rendering is different, store this point within samples
             // (only start storing samples from level 10)
             if (level > 2 && isDifferent) this.samples.add(point);

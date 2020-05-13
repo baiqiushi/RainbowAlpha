@@ -36,4 +36,6 @@ public class Constants {
     public static int TILE_RESOLUTION = 1;
 
     public static String SAMPLING_METHOD = "stratified";
+
+    public static double STOP_CRITERIA = 100;
 }

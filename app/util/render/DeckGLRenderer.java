@@ -32,10 +32,11 @@ public class DeckGLRenderer implements IRenderer {
      *    [i][j][k] = i * side * 3 + j * 3 + k
      *
      * @param _resolution
+     * @param _expansion - expand the given resolution to overflowed radius or not
      * @return
      */
-    public byte[] createRendering(int _resolution) {
-        int side = _resolution + 2 * (radiusInPixels + 1);
+    public byte[] createRendering(int _resolution, boolean _expansion) {
+        int side = _expansion? _resolution + 2 * (radiusInPixels + 1): _resolution;
         byte[] rendering = new byte[side * side * 3];
         // init rendering with BG_COLOR
         for (int i = 0; i < side; i++) {
@@ -83,11 +84,12 @@ public class DeckGLRenderer implements IRenderer {
      * @param _cY
      * @param _halfDimension
      * @param _resolution
+     * @param _expansion - expand the given resolution to overflowed radius or not
      * @param point
      * @return boolean - if render the point on given rendering does not change the result, return false; else return true;
      */
-    public boolean render(byte[] rendering, double _cX, double _cY, double _halfDimension, int _resolution, Point point) {
-        int side = _resolution + 2 * (radiusInPixels + 1);
+    public boolean render(byte[] rendering, double _cX, double _cY, double _halfDimension, int _resolution, boolean _expansion, Point point) {
+        int side = _expansion? _resolution + 2 * (radiusInPixels + 1): _resolution;
         boolean isDifferent = false;
         double pixelLength = 2 * _halfDimension / (double)_resolution;
         double px, py;
