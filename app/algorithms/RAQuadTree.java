@@ -293,9 +293,10 @@ public class RAQuadTree implements IAlgorithm {
             });
 
             // estimate how many samples at the perfect level are within query range
-            int totalPerfectResultSize = estimatePerfectResultSize(level, this, ncX, ncY, nhalfDimension, rcX, rcY, rhalfWidth, rhalfHeight);
+            int perfectResultSize = estimatePerfectResultSize(level, this, ncX, ncY, nhalfDimension, rcX, rcY, rhalfWidth, rhalfHeight);
+            int totalPerfectResultSize = perfectResultSize;
 
-            double estimatedProfit = estimateProfit(level, this, ncX, ncY, nhalfDimension, rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, totalPerfectResultSize, sampleSize);
+            double estimatedProfit = estimateProfit(level, this, ncX, ncY, nhalfDimension, rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, perfectResultSize, totalPerfectResultSize, sampleSize);
 
             // add root node
             queue.add(new QEntry(level, ncX, ncY, nhalfDimension, this, estimatedProfit, totalPerfectResultSize));
@@ -315,6 +316,8 @@ public class RAQuadTree implements IAlgorithm {
                 if (_estimatedProfit <= Constants.STOP_CRITERIA) {
                     int localTargetSampleSize = targetSampleSize(_perfectResultSize, totalPerfectResultSize, sampleSize);
                     //-DEBUG-//
+//                    System.out.println("[queue] level = " + _level);
+//                    System.out.println("[queue] estimate profit = " + _estimatedProfit);
 //                    System.out.println("[queue] perfect result size = " + _perfectResultSize);
 //                    System.out.println("[queue] total perfect result size = " + totalPerfectResultSize);
 //                    System.out.println("[queue] sample size = " + sampleSize);
@@ -376,7 +379,7 @@ public class RAQuadTree implements IAlgorithm {
                 // ignore this node if the range does not intersect with it
                 if (intersectsBBox(cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight)) {
                     perfectResultSizeNW = estimatePerfectResultSize(_level + 1, currentNode.northWest, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight);
-                    estimatedProfit = estimateProfit(_level + 1, currentNode.northWest, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, totalPerfectResultSize, sampleSize);
+                    estimatedProfit = estimateProfit(_level + 1, currentNode.northWest, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, perfectResultSizeNW, totalPerfectResultSize, sampleSize);
                     queue.add(new QEntry(_level + 1, cX, cY, halfDimension, currentNode.northWest, estimatedProfit, perfectResultSizeNW));
                 }
 
@@ -386,7 +389,7 @@ public class RAQuadTree implements IAlgorithm {
                 // ignore this node if the range does not intersect with it
                 if (intersectsBBox(cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight)) {
                     perfectResultSizeNE = estimatePerfectResultSize(_level + 1, currentNode.northEast, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight);
-                    estimatedProfit = estimateProfit(_level + 1, currentNode.northEast, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, totalPerfectResultSize, sampleSize);
+                    estimatedProfit = estimateProfit(_level + 1, currentNode.northEast, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, perfectResultSizeNE, totalPerfectResultSize, sampleSize);
                     queue.add(new QEntry(_level + 1, cX, cY, halfDimension, currentNode.northEast, estimatedProfit, perfectResultSizeNE));
                 }
 
@@ -396,7 +399,7 @@ public class RAQuadTree implements IAlgorithm {
                 // ignore this node if the range does not intersect with it
                 if (intersectsBBox(cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight)) {
                     perfectResultSizeSW = estimatePerfectResultSize(_level + 1, currentNode.southWest, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight);
-                    estimatedProfit = estimateProfit(_level + 1, currentNode.southWest, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, totalPerfectResultSize, sampleSize);
+                    estimatedProfit = estimateProfit(_level + 1, currentNode.southWest, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, perfectResultSizeSW, totalPerfectResultSize, sampleSize);
                     queue.add(new QEntry(_level + 1, cX, cY, halfDimension, currentNode.southWest, estimatedProfit, perfectResultSizeSW));
                 }
 
@@ -406,7 +409,7 @@ public class RAQuadTree implements IAlgorithm {
                 // ignore this node if the range does not intersect with it
                 if (intersectsBBox(cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight)) {
                     perfectResultSizeSE = estimatePerfectResultSize(_level + 1, currentNode.southEast, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight);
-                    estimatedProfit = estimateProfit(_level + 1, currentNode.southEast, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, totalPerfectResultSize, sampleSize);
+                    estimatedProfit = estimateProfit(_level + 1, currentNode.southEast, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, perfectResultSizeSE, totalPerfectResultSize, sampleSize);
                     queue.add(new QEntry(_level + 1, cX, cY, halfDimension, currentNode.southEast, estimatedProfit, perfectResultSizeSE));
                 }
 
@@ -1275,7 +1278,9 @@ public class RAQuadTree implements IAlgorithm {
     }
 
     public static int targetSampleSize(int _perfectResultSize, int _totalPerfectResultSize, int _totalSampleSize) {
-        return (int) Math.round(((double) _perfectResultSize / (double) _totalPerfectResultSize) * _totalSampleSize);
+        if (_perfectResultSize == 0) return 0;
+        // as long as perfect level result size for this node is not 0, sample at least one point for this node
+        return Math.max((int) Math.round(((double) _perfectResultSize / (double) _totalPerfectResultSize) * _totalSampleSize), 1);
     }
 
     /**
@@ -1312,21 +1317,22 @@ public class RAQuadTree implements IAlgorithm {
      * @param _rhalfWidth
      * @param _rhalfHeight
      * @param _rPixelScale
+     * @param _perfectResultSize - perfet level result size for this node range
      * @param _totalPerfectResultSize - total perfectResultSize for this query range
      * @param _totalSampleSize - total target sample size
      * @return
      */
     public static double estimateProfit(int _level, QuadTree _node, double _ncX, double _ncY, double _nhalfDimension,
                                         double _rcX, double _rcY, double _rhalfWidth, double _rhalfHeight,
-                                        double _rPixelScale, int _totalPerfectResultSize, int _totalSampleSize) {
-        // 0 corner case
+                                        double _rPixelScale, int _perfectResultSize, int _totalPerfectResultSize, int _totalSampleSize) {
+        // 1 corner case
         if (_level >= exactLevel) return Double.MIN_VALUE;
 
         // 1 how many samples are at the perfect level under this _node
-        int perfectResultSize = estimatePerfectResultSize(_level, _node, _ncX, _ncY, _nhalfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight);
+        //int perfectResultSize = estimatePerfectResultSize(_level, _node, _ncX, _ncY, _nhalfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight);
 
         // 2 how many samples we need to sample on given _node
-        int targetSampleSize = targetSampleSize(perfectResultSize, _totalPerfectResultSize, _totalSampleSize);
+        int targetSampleSize = targetSampleSize(_perfectResultSize, _totalPerfectResultSize, _totalSampleSize);
 
         // 3 get the sample on _node with targetSampleSize
         List<Point> samplesOnParent = sampleOnNode(_node, targetSampleSize);
@@ -1378,7 +1384,7 @@ public class RAQuadTree implements IAlgorithm {
         if (samplesOnChildSE != null) samplesOnChildren.addAll(samplesOnChildSE);
 
         // 5 get the resolution for given _node as piece of the result
-        int resolution = (int) Math.round(_nhalfDimension / _rPixelScale);
+        int resolution = (int) Math.round(2 * _nhalfDimension / _rPixelScale);
 
         // 6 render samplesOnParent to renderingParent
         byte[] renderingParent = renderer.createRendering(resolution, true);
@@ -1397,8 +1403,9 @@ public class RAQuadTree implements IAlgorithm {
 
         //-DEBUG-//
 //        if (Math.abs(error - 0.0) < 1E-4) {
+//            System.out.println("[error] level = " + _level);
 //            System.out.println("[error] error = " + error);
-//            System.out.println("[error] perfect result size = " + perfectResultSize);
+//            System.out.println("[error] perfect result size = " + _perfectResultSize);
 //            System.out.println("[error] target sample size = " + targetSampleSize);
 //            System.out.println("[error] sample on parent = " + samplesOnParent.size());
 //            if (samplesOnChildNW != null) System.out.println("[error] sample on child north-west = " + samplesOnChildNW.size());
