@@ -234,191 +234,197 @@ public class RAQuadTree implements IAlgorithm {
             return pointsInRange;
         }
 
+
+        class QEntry {
+            int level;
+            double ncX;
+            double ncY;
+            double nhalfDimension;
+            QuadTree node;
+            double benefit; // the benefit value if the take the best move
+            short bestMove; // the best move #, 1 = enlarge result size; 2 = descend to children
+            int sampleSize; // sample size selected on this node
+            int enlargedSampleSize; // for move #1, the enlarged sample size
+            int sampleSizeNW; // for move #2, sample size on child northwest
+            int sampleSizeNE; // for move #2, sample size on child northeast
+            int sampleSizeSW; // for move #2, sample size on child southwest
+            int sampleSizeSE; // for move #2, sample size on child southeast
+
+            int perfectSampleSize; // perfect level sample size
+            int perfectSampleSizeNW; // perfect level sample size for NW child
+            int perfectSampleSizeNE; // perfect level sample size for NW child
+            int perfectSampleSizeSW; // perfect level sample size for NW child
+            int perfectSampleSizeSE; // perfect level sample size for NW child
+
+            QEntry(int _level, double _ncX, double _ncY, double _nhalfDimension, QuadTree _node) {
+                level = _level;
+                ncX = _ncX;
+                ncY = _ncY;
+                nhalfDimension = _nhalfDimension;
+                node = _node;
+                benefit = 0.0;
+                bestMove = 1; // initial best move is to enlarge the result size
+                sampleSize = 0; // initial result size on a node is 0
+                enlargedSampleSize = 1; // initial enlarge result size to 1
+                sampleSizeNW = 0;
+                sampleSizeNE = 0;
+                sampleSizeSW = 0;
+                sampleSizeSE = 0;
+
+                perfectSampleSize = -1;
+                perfectSampleSizeNW = -1;
+                perfectSampleSizeNE = -1;
+                perfectSampleSizeSW = -1;
+                perfectSampleSizeSE = -1;
+            }
+        }
+
         /**
-         * breadth first search with sampling in traversal
+         * breadth first search
          *
-         * explore nodes with higher estimated profit first
-         * - profit means how much more quality we can get if we expand this node
-         * - stop once we have enough samples
+         * explore nodes with higher estimated benefit first
+         * - benefit = gain of quality / cost of sample size
          *
-         * @param ncX
-         * @param ncY
-         * @param nhalfDimension
-         * @param rcX
-         * @param rcY
-         * @param rhalfWidth
-         * @param rhalfHeight
-         * @param rPixelScale
-         * @param level
-         * @param sampleSize - return results only with this sample size
+         * @param _ncX
+         * @param _ncY
+         * @param _nhalfDimension
+         * @param _rcX
+         * @param _rcY
+         * @param _rhalfWidth
+         * @param _rhalfHeight
+         * @param _rPixelScale
+         * @param _targetSampleSize
          * @return
          */
-        public List<Point> bfs(double ncX, double ncY, double nhalfDimension,
-                                            double rcX, double rcY, double rhalfWidth, double rhalfHeight,
-                                            double rPixelScale, int level, int sampleSize) {
+        public List<Point> bfs(double _ncX, double _ncY, double _nhalfDimension,
+                               double _rcX, double _rcY, double _rhalfWidth, double _rhalfHeight,
+                               double _rPixelScale, int _targetSampleSize) {
 
-            class QEntry {
-                int level;
-                double ncX;
-                double ncY;
-                double nhalfDimension;
-                QuadTree node;
-                double estimatedProfit;
-                int perfectResultSize;
-
-                QEntry(int _level, double _ncX, double _ncY, double _nhalfDimension, QuadTree _node, double _estimatedProfit, int _perfectResultSize) {
-                    level = _level;
-                    ncX = _ncX;
-                    ncY = _ncY;
-                    nhalfDimension = _nhalfDimension;
-                    node = _node;
-                    estimatedProfit = _estimatedProfit;
-                    perfectResultSize = _perfectResultSize;
-                }
-            }
-
-            List<Point> pointsInRange = new ArrayList<>();
+            List<Point> result = new ArrayList<>();
 
             // explore larger estimatedProfit node first
             PriorityQueue<QEntry> queue = new PriorityQueue<>(new Comparator<QEntry>() {
                 @Override
                 public int compare(QEntry o1, QEntry o2) {
-                    if (o2.estimatedProfit > o1.estimatedProfit)
+                    if (o2.benefit > o1.benefit)
                         return 1;
-                    else if (o2.estimatedProfit < o1.estimatedProfit)
+                    else if (o2.benefit < o1.benefit)
                         return -1;
                     else
                         return 0;
                 }
             });
 
-            // estimate how many samples at the perfect level are within query range
-            int perfectResultSize = estimatePerfectResultSize(level, this, ncX, ncY, nhalfDimension, rcX, rcY, rhalfWidth, rhalfHeight);
-            int totalPerfectResultSize = perfectResultSize;
-
-            double estimatedProfit = estimateProfit(level, this, ncX, ncY, nhalfDimension, rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, perfectResultSize, totalPerfectResultSize, sampleSize);
-
+            QEntry rootEntry = new QEntry(0, _ncX, _ncY, _nhalfDimension, this);
+            estimateBenefit(rootEntry, _rcX, _rcY, _rhalfWidth, _rhalfHeight, _rPixelScale, _targetSampleSize);
             // add root node
-            queue.add(new QEntry(level, ncX, ncY, nhalfDimension, this, estimatedProfit, totalPerfectResultSize));
+            queue.add(rootEntry);
+            int availableSampleSize = _targetSampleSize - rootEntry.sampleSize;
 
             while (queue.size() > 0) {
 
-                QEntry currentEntry = queue.poll();
-                int _level = currentEntry.level;
-                double _ncX = currentEntry.ncX;
-                double _ncY = currentEntry.ncY;
-                double _nhalfDimension = currentEntry.nhalfDimension;
-                QuadTree currentNode = currentEntry.node;
-                int _perfectResultSize = currentEntry.perfectResultSize;
-                double _estimatedProfit = currentEntry.estimatedProfit;
+                // pick the largest benefit node
+                QEntry entry = queue.poll();
+                int level = entry.level;
+                double ncX = entry.ncX;
+                double ncY = entry.ncY;
+                double nhalfDimension = entry.nhalfDimension;
+                QuadTree node = entry.node;
+                double benefit = entry.benefit;
+                int sampleSize = entry.sampleSize;
 
-                // if the largest estimatedProfit is smaller than some threshold, entering collecting samples mode
-                if (_estimatedProfit <= Constants.STOP_CRITERIA) {
-                    int localTargetSampleSize = targetSampleSize(_perfectResultSize, totalPerfectResultSize, sampleSize);
+                // if the largest estimated benefit is smaller than some threshold, entering collecting samples mode
+                if (benefit <= 0.0 || availableSampleSize <= 0) {
                     //-DEBUG-//
-//                    System.out.println("[queue] level = " + _level);
-//                    System.out.println("[queue] estimate profit = " + _estimatedProfit);
-//                    System.out.println("[queue] perfect result size = " + _perfectResultSize);
-//                    System.out.println("[queue] total perfect result size = " + totalPerfectResultSize);
+//                    System.out.println("[queue] level = " + level);
+//                    System.out.println("[queue] benefit = " + benefit);
 //                    System.out.println("[queue] sample size = " + sampleSize);
-//                    System.out.println("[queue] ---> local target sample size = " + localTargetSampleSize);
                     //-DEBUG-//
-                    numberOfNodesStoppedAtLevels[_level] ++;
-                    if (currentNode.samples != null) {
-                        //-DEBUG-//
-                        //System.out.println("[queue] ===> node sample size = " + currentNode.samples.size());
-                        //-DEBUG-//
-                        if (localTargetSampleSize >= currentNode.samples.size()) {
-                            numberOfSamplesStoppedAtLevels[_level] += currentNode.samples.size();
-                            pointsInRange.addAll(currentNode.samples);
+                    numberOfNodesStoppedAtLevels[level] ++;
+                    if (node.samples != null) {
+                        if (sampleSize >= node.samples.size()) {
+                            numberOfSamplesStoppedAtLevels[level] += node.samples.size();
+                            result.addAll(node.samples);
                         }
                         else {
-                            localTargetSampleSize = localTargetSampleSize == 0? 1: localTargetSampleSize;
-                            numberOfSamplesStoppedAtLevels[_level] += localTargetSampleSize;
-                            pointsInRange.addAll(currentNode.samples.subList(0, localTargetSampleSize));
+                            sampleSize = sampleSize == 0? 1: sampleSize;
+                            numberOfSamplesStoppedAtLevels[level] += sampleSize;
+                            result.addAll(node.samples.subList(0, sampleSize));
                         }
                     }
                     continue;
                 }
 
-                // if no children, ignore
-                if (currentNode.northWest == null) {
-                    continue;
+                // Otherwise, take the best move suggested by this node
+                switch (entry.bestMove) {
+                    // move #1 - enlarge sample size
+                    case 1:
+                        availableSampleSize -= entry.enlargedSampleSize - entry.sampleSize;
+                        entry.sampleSize = entry.enlargedSampleSize;
+                        estimateBenefit(entry, _rcX, _rcY, _rhalfWidth, _rhalfHeight, _rPixelScale, availableSampleSize);
+                        queue.add(entry);
+                        break;
+                    // move #2 - descend to children
+                    case 2:
+                        availableSampleSize -= entry.sampleSizeNW + entry.sampleSizeNE + entry.sampleSizeSW + entry.sampleSizeSE - entry.sampleSize;
+                        double cX, cY;
+                        double halfDimension = nhalfDimension / 2;
+
+                        // northwest
+                        cX = ncX - halfDimension;
+                        cY = ncY - halfDimension;
+                        // ignore this node if the range does not intersect with it
+                        if (intersectsBBox(cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight)) {
+                            QEntry entryNW = new QEntry(level + 1, cX, cY, halfDimension, node.northWest);
+                            entryNW.perfectSampleSize = entry.perfectSampleSizeNW;
+                            entryNW.sampleSize = entry.sampleSizeNW;
+                            estimateBenefit(entryNW, _rcX, _rcY, _rhalfWidth, _rhalfHeight, _rPixelScale, availableSampleSize);
+                            queue.add(entryNW);
+                        }
+
+                        // northeast
+                        cX = ncX + halfDimension;
+                        cY = ncY - halfDimension;
+                        // ignore this node if the range does not intersect with it
+                        if (intersectsBBox(cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight)) {
+                            QEntry entryNE = new QEntry(level + 1, cX, cY, halfDimension, node.northEast);
+                            entryNE.perfectSampleSize = entry.perfectSampleSizeNE;
+                            entryNE.sampleSize = entry.sampleSizeNE;
+                            estimateBenefit(entryNE, _rcX, _rcY, _rhalfWidth, _rhalfHeight, _rPixelScale, availableSampleSize);
+                            queue.add(entryNE);
+                        }
+
+                        // southwest
+                        cX = ncX - halfDimension;
+                        cY = ncY + halfDimension;
+                        // ignore this node if the range does not intersect with it
+                        if (intersectsBBox(cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight)) {
+                            QEntry entrySW = new QEntry(level + 1, cX, cY, halfDimension, node.southWest);
+                            entrySW.perfectSampleSize = entry.perfectSampleSizeSW;
+                            entrySW.sampleSize = entry.sampleSizeSW;
+                            estimateBenefit(entrySW, _rcX, _rcY, _rhalfWidth, _rhalfHeight, _rPixelScale, availableSampleSize);
+                            queue.add(entrySW);
+                        }
+
+                        // southeast
+                        cX = ncX + halfDimension;
+                        cY = ncY + halfDimension;
+                        // ignore this node if the range does not intersect with it
+                        if (intersectsBBox(cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight)) {
+                            QEntry entrySE = new QEntry(level + 1, cX, cY, halfDimension, node.southEast);
+                            entrySE.perfectSampleSize = entry.perfectSampleSizeSE;
+                            entrySE.sampleSize = entry.sampleSizeSE;
+                            estimateBenefit(entrySE, _rcX, _rcY, _rhalfWidth, _rhalfHeight, _rPixelScale, availableSampleSize);
+                            queue.add(entrySE);
+                        }
+                        break;
                 }
-
-                // if this node's pixel scale is already smaller than the range query's pixel scale,
-                // add samples to result set
-//                if ((_nhalfDimension * 2 / oneNodeResolution) <= rPixelScale) {
-//                    int localTargetSampleSize = targetSampleSize(_perfectResultSize, totalPerfectResultSize, sampleSize);
-//                    numberOfNodesStoppedAtLevels[_level] ++;
-//                    if (currentNode.samples != null) {
-//                        if (localTargetSampleSize >= currentNode.samples.size()) {
-//                            numberOfSamplesStoppedAtLevels[_level] += currentNode.samples.size();
-//                            pointsInRange.addAll(currentNode.samples);
-//                        }
-//                        else {
-//                            localTargetSampleSize = localTargetSampleSize == 0? 1: localTargetSampleSize;
-//                            numberOfSamplesStoppedAtLevels[_level] += localTargetSampleSize;
-//                            pointsInRange.addAll(currentNode.samples.subList(0, localTargetSampleSize));
-//                        }
-//                    }
-//                    continue;
-//                }
-
-                // Otherwise, expand current node to its children
-                double cX, cY;
-                double halfDimension = _nhalfDimension / 2;
-                int perfectResultSizeNW = 0;
-                int perfectResultSizeNE = 0;
-                int perfectResultSizeSW = 0;
-                int perfectResultSizeSE = 0;
-
-                // northwest
-                cX = _ncX - halfDimension;
-                cY = _ncY - halfDimension;
-                // ignore this node if the range does not intersect with it
-                if (intersectsBBox(cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight)) {
-                    perfectResultSizeNW = estimatePerfectResultSize(_level + 1, currentNode.northWest, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight);
-                    estimatedProfit = estimateProfit(_level + 1, currentNode.northWest, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, perfectResultSizeNW, totalPerfectResultSize, sampleSize);
-                    queue.add(new QEntry(_level + 1, cX, cY, halfDimension, currentNode.northWest, estimatedProfit, perfectResultSizeNW));
-                }
-
-                // northeast
-                cX = _ncX + halfDimension;
-                cY = _ncY - halfDimension;
-                // ignore this node if the range does not intersect with it
-                if (intersectsBBox(cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight)) {
-                    perfectResultSizeNE = estimatePerfectResultSize(_level + 1, currentNode.northEast, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight);
-                    estimatedProfit = estimateProfit(_level + 1, currentNode.northEast, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, perfectResultSizeNE, totalPerfectResultSize, sampleSize);
-                    queue.add(new QEntry(_level + 1, cX, cY, halfDimension, currentNode.northEast, estimatedProfit, perfectResultSizeNE));
-                }
-
-                // southwest
-                cX = _ncX - halfDimension;
-                cY = _ncY + halfDimension;
-                // ignore this node if the range does not intersect with it
-                if (intersectsBBox(cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight)) {
-                    perfectResultSizeSW = estimatePerfectResultSize(_level + 1, currentNode.southWest, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight);
-                    estimatedProfit = estimateProfit(_level + 1, currentNode.southWest, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, perfectResultSizeSW, totalPerfectResultSize, sampleSize);
-                    queue.add(new QEntry(_level + 1, cX, cY, halfDimension, currentNode.southWest, estimatedProfit, perfectResultSizeSW));
-                }
-
-                // southeast
-                cX = _ncX + halfDimension;
-                cY = _ncY + halfDimension;
-                // ignore this node if the range does not intersect with it
-                if (intersectsBBox(cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight)) {
-                    perfectResultSizeSE = estimatePerfectResultSize(_level + 1, currentNode.southEast, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight);
-                    estimatedProfit = estimateProfit(_level + 1, currentNode.southEast, cX, cY, halfDimension, rcX, rcY, rhalfWidth, rhalfHeight, rPixelScale, perfectResultSizeSE, totalPerfectResultSize, sampleSize);
-                    queue.add(new QEntry(_level + 1, cX, cY, halfDimension, currentNode.southEast, estimatedProfit, perfectResultSizeSE));
-                }
-
-                // update totalPerfectResultSize with finer estimation
-                totalPerfectResultSize -= _perfectResultSize;
-                totalPerfectResultSize += (perfectResultSizeNW + perfectResultSizeNE + perfectResultSizeSW + perfectResultSizeSE);
             }
 
-            return pointsInRange;
+            //-DEBUG-//
+            System.out.println("[availableSampleSize] = " + availableSampleSize);
+
+            return result;
         }
 
         /**
@@ -1224,7 +1230,7 @@ public class RAQuadTree implements IAlgorithm {
         return estimatedProfit;
     }
 
-    public static int estimatePerfectResultSize(int _level, QuadTree _node, double _ncX, double _ncY, double _nhalfDimension,
+    public static int estimatePerfectSampleSize(QuadTree _node, double _ncX, double _ncY, double _nhalfDimension,
                                                 double _rcX, double _rcY, double _rhalfWidth, double _rhalfHeight) {
         // 1 how many samples are at the perfect level under this _node
         int perfectSampleSize = _node.counts[exactLevel];
@@ -1291,6 +1297,7 @@ public class RAQuadTree implements IAlgorithm {
      * @return null - if given _node has no samples at all or sample size is not enough for target sample size
      */
     public static List<Point> sampleOnNode(QuadTree _node, int _targetSampleSize) {
+        if (_targetSampleSize == 0) return null;
         if (_node.samples == null) {
             return null;
         }
@@ -1299,123 +1306,220 @@ public class RAQuadTree implements IAlgorithm {
                 return null;
             }
             else {
-                return _node.samples.subList(0, _targetSampleSize);
+                int startIndex = _node.samples.size() - _targetSampleSize;
+                return _node.samples.subList(startIndex, _node.samples.size());
             }
         }
     }
 
     /**
-     * estimate how much more quality we can get if we expand given _node to its children
+     * estimate the benefit for given _entry
      *
-     * @param _level
-     * @param _node
-     * @param _ncX
-     * @param _ncY
-     * @param _nhalfDimension
+     * @param _entry
      * @param _rcX
      * @param _rcY
      * @param _rhalfWidth
      * @param _rhalfHeight
      * @param _rPixelScale
-     * @param _perfectResultSize - perfet level result size for this node range
-     * @param _totalPerfectResultSize - total perfectResultSize for this query range
-     * @param _totalSampleSize - total target sample size
+     * @param _availableSampleSize - available extra sample size
      * @return
      */
-    public static double estimateProfit(int _level, QuadTree _node, double _ncX, double _ncY, double _nhalfDimension,
-                                        double _rcX, double _rcY, double _rhalfWidth, double _rhalfHeight,
-                                        double _rPixelScale, int _perfectResultSize, int _totalPerfectResultSize, int _totalSampleSize) {
-        // 1 corner case
-        if (_level >= exactLevel) return Double.MIN_VALUE;
+    public static void estimateBenefit(QuadTree.QEntry _entry,
+                                       double _rcX, double _rcY, double _rhalfWidth, double _rhalfHeight,
+                                       double _rPixelScale, int _availableSampleSize) {
+        double _ncX = _entry.ncX;
+        double _ncY = _entry.ncY;
+        double _nhalfDimension = _entry.nhalfDimension;
+        QuadTree _node = _entry.node;
 
-        // 1 how many samples are at the perfect level under this _node
-        //int perfectResultSize = estimatePerfectResultSize(_level, _node, _ncX, _ncY, _nhalfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight);
-
-        // 2 how many samples we need to sample on given _node
-        int targetSampleSize = targetSampleSize(_perfectResultSize, _totalPerfectResultSize, _totalSampleSize);
-
-        // 3 get the sample on _node with targetSampleSize
-        List<Point> samplesOnParent = sampleOnNode(_node, targetSampleSize);
-        // if there is no sample on this _node at all, this node will need be expanded for sure
-        if (samplesOnParent == null) {
-            return Double.MAX_VALUE;
+        // corner case
+        if (_node.samples == null) {
+            _entry.benefit = 0.0;
+            return;
         }
 
-        // 4 for each children of the _node, compute the same targetSampleSize
-        double cX, cY;
-        double halfDimension = _nhalfDimension / 2;
-        // if no children, this node should not be expanded at all
-        if (_node.northWest == null) {
-            return Double.MIN_VALUE;
-        }
-        // northwest
-        cX = _ncX - halfDimension;
-        cY = _ncY - halfDimension;
-        int perfectResultSizeNW = estimatePerfectResultSize(_level + 1, _node.northWest, cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight);
-        int targetSampleSizeNW = targetSampleSize(perfectResultSizeNW, _totalPerfectResultSize, _totalSampleSize);
-        List<Point> samplesOnChildNW = sampleOnNode(_node.northWest, targetSampleSizeNW);
+        // compute how many samples are at the perfect level under this _node
+        _entry.perfectSampleSize = _entry.perfectSampleSize == -1?
+                estimatePerfectSampleSize(_node, _ncX, _ncY, _nhalfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight):
+                _entry.perfectSampleSize;
 
-        // northeast
-        cX = _ncX + halfDimension;
-        cY = _ncY - halfDimension;
-        int perfectResultSizeNE = estimatePerfectResultSize(_level + 1, _node.northEast, cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight);
-        int targetSampleSizeNE = targetSampleSize(perfectResultSizeNE, _totalPerfectResultSize, _totalSampleSize);
-        List<Point> samplesOnChildNE = sampleOnNode(_node.northEast, targetSampleSizeNE);
-
-        // southwest
-        cX = _ncX - halfDimension;
-        cY = _ncY + halfDimension;
-        int perfectResultSizeSW = estimatePerfectResultSize(_level + 1, _node.southWest, cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight);
-        int targetSampleSizeSW = targetSampleSize(perfectResultSizeSW, _totalPerfectResultSize, _totalSampleSize);
-        List<Point> samplesOnChildSW = sampleOnNode(_node.southWest, targetSampleSizeSW);
-
-        // southeast
-        cX = _ncX + halfDimension;
-        cY = _ncY + halfDimension;
-        int perfectResultSizeSE = estimatePerfectResultSize(_level + 1, _node.southEast, cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight);
-        int targetSampleSizeSE = targetSampleSize(perfectResultSizeSE, _totalPerfectResultSize, _totalSampleSize);
-        List<Point> samplesOnChildSE = sampleOnNode(_node.southEast, targetSampleSizeSE);
-
-        // concatenate all samples on children
-        List<Point> samplesOnChildren = new ArrayList<>();
-        if (samplesOnChildNW != null) samplesOnChildren.addAll(samplesOnChildNW);
-        if (samplesOnChildNE != null) samplesOnChildren.addAll(samplesOnChildNE);
-        if (samplesOnChildSW != null) samplesOnChildren.addAll(samplesOnChildSW);
-        if (samplesOnChildSE != null) samplesOnChildren.addAll(samplesOnChildSE);
-
-        // 5 get the resolution for given _node as piece of the result
+        // get the resolution for given _node as piece of the result
         int resolution = (int) Math.round(2 * _nhalfDimension / _rPixelScale);
 
-        // 6 render samplesOnParent to renderingParent
-        byte[] renderingParent = renderer.createRendering(resolution, true);
-        for (Point point: samplesOnParent) {
-            renderer.render(renderingParent, _ncX, _ncY, _nhalfDimension, resolution, true, point);
+        int sampleSize = _entry.sampleSize;
+
+        // render current sampleSize points to rendering0
+        byte[] rendering0 = renderer.createRendering(resolution, true);
+        for (int i = 0; i < sampleSize; i++) {
+            renderer.render(rendering0, _ncX, _ncY, _nhalfDimension, resolution, true, _node.samples.get(i));
         }
 
-        // 7 render samplesOnChildren to renderingChildren
-        byte[] renderingChildren = renderer.createRendering(resolution, true);
-        for (Point point: samplesOnChildren) {
-            renderer.render(renderingChildren, _ncX, _ncY, _nhalfDimension, resolution, true, point);
+        /** Move #1 */
+        double benefit1 = 0.0;
+
+        // compute enlarged sample size by double current sample size
+        int enlargedSampleSize = sampleSize == 0 ? 1 : sampleSize * 2;
+        // enlarged sample size - current sample size <= available sample size
+        if ((enlargedSampleSize - sampleSize) > _availableSampleSize) enlargedSampleSize = sampleSize + _availableSampleSize;
+        // enlarged sample size <= node.samples.size()
+        if (enlargedSampleSize > _node.samples.size()) enlargedSampleSize = _node.samples.size();
+
+        if (enlargedSampleSize > sampleSize) {
+            List<Point> enlargedSamples = sampleOnNode(_node, enlargedSampleSize);
+
+            // render newResultSize points to rendering1
+            byte[] rendering1 = renderer.createRendering(resolution, true);
+            for (Point point : enlargedSamples) {
+                renderer.render(rendering1, _ncX, _ncY, _nhalfDimension, resolution, true, point);
+            }
+
+            // compute the error between rendering0 and rendering1 as the gain1
+            double gain1 = errorMetric.totalError(rendering0, rendering1, resolution, true);
+            int cost1 = enlargedSampleSize - sampleSize;
+            benefit1 = gain1 / cost1;
+
+            //-DEBUG-//
+//            if (benefit1 <= 0.0) {
+//                System.out.println("[benefit] -- benefit1 = " + benefit1 + " --");
+//                System.out.println("[benefit] enlarged samples = " + enlargedSamples.size());
+//                System.out.println("[benefit] gain1 = " + gain1);
+//                System.out.println("[benefit] cost1 = " + cost1);
+//                System.out.println("1st point in enlargedSamples = ");
+//                Point point = enlargedSamples.get(0);
+//                System.out.println("[" + point.getX() + ", " + point.getY() + "]");
+//                System.out.println("_ncX = " + _ncX + ", _ncY = " + _ncY + ", _nhalfDimension = " + _nhalfDimension);
+//                System.out.println("resolution = " + resolution);
+//                printRenderingGray("rendering0", rendering0, resolution, true);
+//                printRenderingGray("rendering1", rendering1, resolution, true);
+//            }
+        }
+        //-DEBUG-//
+        else {
+            //System.out.println("[benefit] enlarged sample size <= sample size!");
         }
 
-        // 8 compute the error between renderingParent and renderingChildren as the profit
-        double error = errorMetric.totalError(renderingParent, renderingChildren, resolution);
+        /** Move #2 */
+        double benefit2 = 0.0;
+        int sampleSizeNW = 0;
+        int sampleSizeNE = 0;
+        int sampleSizeSW = 0;
+        int sampleSizeSE = 0;
+        if (_node.northWest != null) {
+            // for each children of the _node, compute a sampleSize proportional to their perfectSampleSize
+            double cX, cY;
+            double halfDimension = _nhalfDimension / 2;
+
+            // northwest
+            if (_entry.perfectSampleSizeNW == -1) {
+                cX = _ncX - halfDimension;
+                cY = _ncY - halfDimension;
+                _entry.perfectSampleSizeNW = estimatePerfectSampleSize(_node.northWest, cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight);
+            }
+            // northeast
+            if (_entry.perfectSampleSizeNE == -1) {
+                cX = _ncX + halfDimension;
+                cY = _ncY - halfDimension;
+                _entry.perfectSampleSizeNE = estimatePerfectSampleSize(_node.northEast, cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight);
+            }
+            // southwest
+            if (_entry.perfectSampleSizeSW == -1) {
+                cX = _ncX - halfDimension;
+                cY = _ncY + halfDimension;
+                _entry.perfectSampleSizeSW = estimatePerfectSampleSize(_node.southWest, cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight);
+            }
+            // southeast
+            if (_entry.perfectSampleSizeSE == -1) {
+                cX = _ncX + halfDimension;
+                cY = _ncY + halfDimension;
+                _entry.perfectSampleSizeSE = estimatePerfectSampleSize(_node.southEast, cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight);
+            }
+
+            int totalPerfectSampleSizeOnChildren = _entry.perfectSampleSizeNW + _entry.perfectSampleSizeNE + _entry.perfectSampleSizeSW + _entry.perfectSampleSizeSE;
+
+            sampleSizeNW = (int) Math.round(((double) _entry.perfectSampleSizeNW / (double) totalPerfectSampleSizeOnChildren) * sampleSize);
+            sampleSizeNE = (int) Math.round(((double) _entry.perfectSampleSizeNE / (double) totalPerfectSampleSizeOnChildren) * sampleSize);
+            sampleSizeSW = (int) Math.round(((double) _entry.perfectSampleSizeSW / (double) totalPerfectSampleSizeOnChildren) * sampleSize);
+            sampleSizeSE = (int) Math.round(((double) _entry.perfectSampleSizeSE / (double) totalPerfectSampleSizeOnChildren) * sampleSize);
+            sampleSizeNW = _node.northWest.samples == null? 0: (Math.min(sampleSizeNW, _node.northWest.samples.size()));
+            sampleSizeNE = _node.northEast.samples == null? 0: (Math.min(sampleSizeNE, _node.northEast.samples.size()));
+            sampleSizeSW = _node.southWest.samples == null? 0: (Math.min(sampleSizeSW, _node.southWest.samples.size()));
+            sampleSizeSE = _node.southEast.samples == null? 0: (Math.min(sampleSizeSE, _node.southEast.samples.size()));
+            List<Point> samplesOnChildNW = sampleOnNode(_node.northWest, sampleSizeNW);
+            List<Point> samplesOnChildNE = sampleOnNode(_node.northEast, sampleSizeNE);
+            List<Point> samplesOnChildSW = sampleOnNode(_node.southWest, sampleSizeSW);
+            List<Point> samplesOnChildSE = sampleOnNode(_node.southEast, sampleSizeSE);
+
+            // concatenate all samples on children
+            List<Point> samplesOnChildren = new ArrayList<>();
+            if (samplesOnChildNW != null) samplesOnChildren.addAll(samplesOnChildNW);
+            if (samplesOnChildNE != null) samplesOnChildren.addAll(samplesOnChildNE);
+            if (samplesOnChildSW != null) samplesOnChildren.addAll(samplesOnChildSW);
+            if (samplesOnChildSE != null) samplesOnChildren.addAll(samplesOnChildSE);
+
+            // render samplesOnChildren to rendering2
+            byte[] rendering2 = renderer.createRendering(resolution, true);
+            for (Point point : samplesOnChildren) {
+                renderer.render(rendering2, _ncX, _ncY, _nhalfDimension, resolution, true, point);
+            }
+
+            // compute the error between rendering0 and rendering2 as the gain2
+            double gain2 = errorMetric.totalError(rendering0, rendering2, resolution, true);
+            int cost2 = sampleSizeNW + sampleSizeNE + sampleSizeSW + sampleSizeSE - sampleSize;
+            cost2 = cost2 == 0 ? 1 : cost2;
+            benefit2 = gain2 / cost2;
+
+            //-DEBUG-//
+//            if (benefit2 <= 0.0) {
+//                System.out.println("[benefit] samplesOnChildNW = " + (samplesOnChildNW == null? "null": samplesOnChildNW.size()));
+//                System.out.println("[benefit] samplesOnChildNE = " + (samplesOnChildNE == null? "null": samplesOnChildNE.size()));
+//                System.out.println("[benefit] samplesOnChildSW = " + (samplesOnChildSW == null? "null": samplesOnChildSW.size()));
+//                System.out.println("[benefit] samplesOnChildSE = " + (samplesOnChildSE == null? "null": samplesOnChildSE.size()));
+//                System.out.println("[benefit] gain2 = " + gain2);
+//                System.out.println("[benefit] cost2 = " + cost2);
+//            }
+        }
+        //-DEBUG-//
+        else {
+            //System.out.println("[benefit] No children of this node!");
+        }
 
         //-DEBUG-//
-//        if (Math.abs(error - 0.0) < 1E-4) {
-//            System.out.println("[error] level = " + _level);
-//            System.out.println("[error] error = " + error);
-//            System.out.println("[error] perfect result size = " + _perfectResultSize);
-//            System.out.println("[error] target sample size = " + targetSampleSize);
-//            System.out.println("[error] sample on parent = " + samplesOnParent.size());
-//            if (samplesOnChildNW != null) System.out.println("[error] sample on child north-west = " + samplesOnChildNW.size());
-//            if (samplesOnChildNE != null) System.out.println("[error] sample on child north-east = " + samplesOnChildNE.size());
-//            if (samplesOnChildSW != null) System.out.println("[error] sample on child south-west = " + samplesOnChildSW.size());
-//            if (samplesOnChildSE != null) System.out.println("[error] sample on child south-east = " + samplesOnChildSE.size());
-//            System.out.println("[error] resolution = " + resolution);
-//        }
+        double benefit = 0.0;
 
-        return error;
+        // take move #1
+        if (benefit1 > benefit2) {
+            _entry.bestMove = 1;
+            _entry.benefit = benefit1;
+            _entry.enlargedSampleSize = enlargedSampleSize;
+            //-DEBUG-//
+            benefit = benefit1;
+        }
+        // take move #2
+        else {
+            _entry.bestMove = 2;
+            _entry.benefit = benefit2;
+            _entry.sampleSizeNW = sampleSizeNW;
+            _entry.sampleSizeNE = sampleSizeNE;
+            _entry.sampleSizeSW = sampleSizeSW;
+            _entry.sampleSizeSE = sampleSizeSE;
+            //-DEBUG-//
+            benefit = benefit2;
+        }
+
+        //-DEBUG-//
+//        if (Math.abs(benefit - 0.0) < 1E-4) {
+//            System.out.println("[benefit] -- benefit = " + benefit + " --");
+//            System.out.println("[benefit] level = " + _entry.level);
+//            System.out.println("[benefit] node.samples.size = " + _node.samples.size());
+//            System.out.println("[benefit] best move = " + _entry.bestMove);
+//            System.out.println("[benefit] sample size = " + _entry.sampleSize);
+//            System.out.println("[benefit] enlarged sample size = " + _entry.enlargedSampleSize);
+//            System.out.println("[benefit] sample size NW = " + _entry.sampleSizeNW);
+//            System.out.println("[benefit] sample size NE = " + _entry.sampleSizeNE);
+//            System.out.println("[benefit] sample size SW = " + _entry.sampleSizeSW);
+//            System.out.println("[benefit] sample size SE = " + _entry.sampleSizeSE);
+//            System.out.println("[benefit] resolution = " + resolution);
+//        }
     }
 
     public static boolean flipCoin(double probability) {
@@ -1482,7 +1586,7 @@ public class RAQuadTree implements IAlgorithm {
             else if (Constants.SAMPLING_METHOD.equalsIgnoreCase("bfs")) {
                 System.out.println(" ---- BFS Sampling ----");
                 points = this.quadTree.bfs(0.5, 0.5, 0.5,
-                        rcX, rcY, rhalfWidth, rhalfHeight, pixelScale, 0, sampleSize);
+                        rcX, rcY, rhalfWidth, rhalfHeight, pixelScale, sampleSize);
             }
             else {
                 System.out.println(" ---- Stratified Sampling ----");
@@ -1543,8 +1647,12 @@ public class RAQuadTree implements IAlgorithm {
         System.out.println("[Total Time] " + timing.get("total") + " seconds.");
     }
 
-    private void printRenderingGray(String name, byte[] _rendering, int _resolution) {
-        int side = _resolution;
+    public static int expandResolution(int _resolution) {
+        return _resolution + 2 * (Constants.RADIUS_IN_PIXELS + 1);
+    }
+
+    public static void printRenderingGray(String name, byte[] _rendering, int _resolution, boolean _expansion) {
+        int side = _expansion? expandResolution(_resolution): _resolution;
         System.out.println("========== " + name + "==========");
         for (int i = 0; i < side; i++) {
             for (int j = 0; j < side; j++) {

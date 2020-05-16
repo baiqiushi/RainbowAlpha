@@ -1,5 +1,6 @@
 package util.render;
 
+import util.Constants;
 import util.UnsignedByte;
 
 public class MeanSquaredError implements IErrorMetric {
@@ -17,8 +18,8 @@ public class MeanSquaredError implements IErrorMetric {
      * @return
      */
     @Override
-    public double totalError(byte[] _rendering1, byte[] _rendering2, int _resolution) {
-        int side = _resolution;
+    public double totalError(byte[] _rendering1, byte[] _rendering2, int _resolution, boolean _expansion) {
+        int side = _expansion? _resolution + 2 * (Constants.RADIUS_IN_PIXELS + 1): _resolution;
         // compute squared error between pixels with gray scaling
         double error = 0.0;
         for (int i = 0; i < side; i++) {
