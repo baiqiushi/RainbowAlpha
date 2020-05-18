@@ -317,6 +317,7 @@ public class RAQuadTree implements IAlgorithm {
 
             QEntry rootEntry = new QEntry(0, _ncX, _ncY, _nhalfDimension, this);
             estimateBenefit(rootEntry, _rcX, _rcY, _rhalfWidth, _rhalfHeight, _rPixelScale, _targetSampleSize);
+
             // add root node
             queue.add(rootEntry);
             int availableSampleSize = _targetSampleSize - rootEntry.sampleSize;
@@ -1123,11 +1124,14 @@ public class RAQuadTree implements IAlgorithm {
     int totalStoredNumberOfPoints = 0;
     static long nodesCount = 0; // count quad-tree nodes
 
-    /** For stats */
+    /** For query stats */
     static int[] numberOfNodesStoppedAtLevels; // for current query, count how many nodes stopped at a certain level
     static int[] numberOfSamplesStoppedAtLevels; // for current query, count how many samples stopped at a certain level
 
-    /** For estimate profit */
+    /** For query time analysis */
+    static Map<String, Double> times; // for current query, store times for different parts
+
+    /** For query estimate benefit */
     static int exactLevel; // for current query, the exact visualization appears at which level
     static int resX, resY; // for current query, the resolution
 
@@ -1156,9 +1160,12 @@ public class RAQuadTree implements IAlgorithm {
             timing.put("total", 0.0);
         }
 
-        /** For stats */
+        /** For query stats */
         numberOfNodesStoppedAtLevels = new int[Constants.MAX_ZOOM + 2];
         numberOfSamplesStoppedAtLevels = new int[Constants.MAX_ZOOM + 2];
+
+        /** For query time analysis */
+        times = new HashMap<>();
 
         MyMemory.printMemory();
     }
@@ -1232,6 +1239,9 @@ public class RAQuadTree implements IAlgorithm {
 
     public static int estimatePerfectSampleSize(QuadTree _node, double _ncX, double _ncY, double _nhalfDimension,
                                                 double _rcX, double _rcY, double _rhalfWidth, double _rhalfHeight) {
+        //--time--//
+        long startTime = System.nanoTime();
+
         // 1 how many samples are at the perfect level under this _node
         int perfectSampleSize = _node.counts[exactLevel];
 
@@ -1280,6 +1290,9 @@ public class RAQuadTree implements IAlgorithm {
 //            }
 //        }
 
+        long endTime = System.nanoTime();
+        times.put("estimatePerfectSampleSize", times.get("estimatePerfectSampleSize") + ((double) (endTime - startTime) / 1000000000.0));
+
         return perfectSampleSize;
     }
 
@@ -1306,8 +1319,14 @@ public class RAQuadTree implements IAlgorithm {
                 return null;
             }
             else {
+                //--time--//
+                long startTime = System.nanoTime();
                 int startIndex = _node.samples.size() - _targetSampleSize;
-                return _node.samples.subList(startIndex, _node.samples.size());
+                List<Point> samples = _node.samples.subList(startIndex, _node.samples.size());
+                //--time--//
+                long endTime = System.nanoTime();
+                times.put("sampleOnNode", times.get("sampleOnNode") + ((double) (endTime - startTime) / 1000000000.0));
+                return samples;
             }
         }
     }
@@ -1327,6 +1346,9 @@ public class RAQuadTree implements IAlgorithm {
     public static void estimateBenefit(QuadTree.QEntry _entry,
                                        double _rcX, double _rcY, double _rhalfWidth, double _rhalfHeight,
                                        double _rPixelScale, int _availableSampleSize) {
+        //--time--//
+        long startTime = System.nanoTime();
+
         double _ncX = _entry.ncX;
         double _ncY = _entry.ncY;
         double _nhalfDimension = _entry.nhalfDimension;
@@ -1348,11 +1370,16 @@ public class RAQuadTree implements IAlgorithm {
 
         int sampleSize = _entry.sampleSize;
 
+        //--time--//
+        long startTime0 = System.nanoTime();
         // render current sampleSize points to rendering0
         byte[] rendering0 = renderer.createRendering(resolution, true);
         for (int i = 0; i < sampleSize; i++) {
             renderer.render(rendering0, _ncX, _ncY, _nhalfDimension, resolution, true, _node.samples.get(i));
         }
+        //--time--//
+        long endTime0 = System.nanoTime();
+        times.put("rendering", times.get("rendering") + ((double) (endTime0 - startTime0) / 1000000000.0));
 
         /** Move #1 */
         double benefit1 = 0.0;
@@ -1367,14 +1394,24 @@ public class RAQuadTree implements IAlgorithm {
         if (enlargedSampleSize > sampleSize) {
             List<Point> enlargedSamples = sampleOnNode(_node, enlargedSampleSize);
 
+            //--time--//
+            long startTime1 = System.nanoTime();
             // render newResultSize points to rendering1
             byte[] rendering1 = renderer.createRendering(resolution, true);
             for (Point point : enlargedSamples) {
                 renderer.render(rendering1, _ncX, _ncY, _nhalfDimension, resolution, true, point);
             }
+            //--time--//
+            long endTime1 = System.nanoTime();
+            times.put("rendering", times.get("rendering") + ((double) (endTime1 - startTime1) / 1000000000.0));
 
+            //--time--//
+            long startTime1e = System.nanoTime();
             // compute the error between rendering0 and rendering1 as the gain1
             double gain1 = errorMetric.totalError(rendering0, rendering1, resolution, true);
+            //--time--//
+            long endTime1e = System.nanoTime();
+            times.put("computeError", times.get("computeError") + ((double) (endTime1e - startTime1e) / 1000000000.0));
             int cost1 = enlargedSampleSize - sampleSize;
             benefit1 = gain1 / cost1;
 
@@ -1456,14 +1493,24 @@ public class RAQuadTree implements IAlgorithm {
             if (samplesOnChildSW != null) samplesOnChildren.addAll(samplesOnChildSW);
             if (samplesOnChildSE != null) samplesOnChildren.addAll(samplesOnChildSE);
 
+            //--time--//
+            long startTime2 = System.nanoTime();
             // render samplesOnChildren to rendering2
             byte[] rendering2 = renderer.createRendering(resolution, true);
             for (Point point : samplesOnChildren) {
                 renderer.render(rendering2, _ncX, _ncY, _nhalfDimension, resolution, true, point);
             }
+            //--time--//
+            long endTime2 = System.nanoTime();
+            times.put("rendering", times.get("rendering") + ((double) (endTime2 - startTime2) / 1000000000.0));
 
+            //--time--//
+            long startTime2e = System.nanoTime();
             // compute the error between rendering0 and rendering2 as the gain2
             double gain2 = errorMetric.totalError(rendering0, rendering2, resolution, true);
+            //--time--//
+            long endTime2e = System.nanoTime();
+            times.put("computeError", times.get("computeError") + ((double) (endTime2e - startTime2e) / 1000000000.0));
             int cost2 = sampleSizeNW + sampleSizeNE + sampleSizeSW + sampleSizeSE - sampleSize;
             cost2 = cost2 == 0 ? 1 : cost2;
             benefit2 = gain2 / cost2;
@@ -1505,6 +1552,10 @@ public class RAQuadTree implements IAlgorithm {
             //-DEBUG-//
             benefit = benefit2;
         }
+
+        //--time--//
+        long endTime = System.nanoTime();
+        times.put("estimateBenefit", times.get("estimateBenefit") + ((double) (endTime - startTime) / 1000000000.0));
 
         //-DEBUG-//
 //        if (Math.abs(benefit - 0.0) < 1E-4) {
@@ -1562,11 +1613,18 @@ public class RAQuadTree implements IAlgorithm {
                 "range = [(" + rcX + ", " + rcY + "), " + rhalfWidth + ", " + rhalfHeight + "] ; \n" +
                 "pixelScale = " + pixelScale + ";");
 
-        /** For stats*/
+        /** For query stats*/
         for (int i = 0; i <= Constants.MAX_ZOOM; i ++) numberOfNodesStoppedAtLevels[i] = 0;
         for (int i = 0; i <= Constants.MAX_ZOOM; i ++) numberOfSamplesStoppedAtLevels[i] = 0;
 
-        /** For sample analysis */
+        /** For query time analysis */
+        times.put("estimateBenefit", 0.0);
+        times.put("estimatePerfectSampleSize", 0.0);
+        times.put("sampleOnNode", 0.0);
+        times.put("rendering", 0.0);
+        times.put("computeError", 0.0);
+
+        /** For query estimate benefit */
         // find the level where exact visualization samples are
         exactLevel = Math.min((int) Math.ceil(Math.log(1.0 / pixelScale / oneNodeResolution) / Math.log(2)), Constants.MAX_ZOOM);
         //-DEBUG-//
@@ -1611,6 +1669,11 @@ public class RAQuadTree implements IAlgorithm {
         MyTimer.temporaryTimer.put("treeTime", treeTime);
         System.out.println("[RA-QuadTree] tree search got " + points.size() + " data points.");
         System.out.println("[RA-QuadTree] tree search time: " + treeTime + " seconds.");
+        System.out.println("[RA-QuadTree]     - estimate benefit time: " + times.get("estimateBenefit") + " seconds.");
+        System.out.println("[RA-QuadTree]         - estimate perfect sample size time: " + times.get("estimatePerfectSampleSize") + " seconds.");
+        System.out.println("[RA-QuadTree]         - sample on node time: " + times.get("sampleOnNode") + " seconds.");
+        System.out.println("[RA-QuadTree]         - rendering time: " + times.get("rendering") + " seconds.");
+        System.out.println("[RA-QuadTree]         - compute error time: " + times.get("computeError") + " seconds.");
 
         // build binary result message
         MyTimer.startTimer();
