@@ -14,6 +14,8 @@ public interface IAlgorithm {
      */
     void load(List<Point> points);
 
+    void finishLoad();
+
     /**
      * answer a query
      *

@@ -212,6 +212,12 @@ public class Agent extends AbstractActor {
         respond(binaryData);
     }
 
+    private void finishLoad(Query query) {
+        // query the algorithm
+        IAlgorithm algorithm = algorithms.get(query.key);
+        algorithm.finishLoad();
+    }
+
     private void buildBinaryHeader(byte[] binaryData, int progress, double totalTime, double treeTime, double aggregateTime) {
         // construct final response
         //  progress  totalTime  treeTime   aggTime  msgType   binary data payload
@@ -313,6 +319,9 @@ public class Agent extends AbstractActor {
             calendar.add(Calendar.DATE, this.intervalDays);
             currentEnd = calendar.getTime();
         }
+
+        // notify algorithm that data loading is done.
+        finishLoad(query);
 
         // for experiments analysis
         System.out.println("========== Experiment Analysis ==========");

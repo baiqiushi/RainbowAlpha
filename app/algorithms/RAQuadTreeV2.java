@@ -9,7 +9,7 @@ import java.util.*;
 
 import static util.Mercator.*;
 
-public class RAQuadTree implements IAlgorithm {
+public class RAQuadTreeV2 implements IAlgorithm {
 
     public static double highestLevelNodeDimension;
 
@@ -19,14 +19,6 @@ public class RAQuadTree implements IAlgorithm {
 
     public class QuadTree {
         public Point sample;
-        public int count; // count of subtree
-        public double[] errors; // errors between this sample and four children's samples for all zoom levels
-
-        public QuadTree() {
-            this.sample = null;
-            this.count = 0;
-            this.errors = new double[Constants.MAX_ZOOM + 1];
-        }
 
         // children
         public QuadTree northWest;
@@ -79,11 +71,8 @@ public class RAQuadTree implements IAlgorithm {
             // If this node is leaf and empty, put this point on this node
             if (this.sample == null && this.northWest == null) {
                 this.sample = point;
-                this.count = 1;
                 return true;
             }
-            // Else, add count into this node
-            this.count ++;
 
             // if boundary is smaller than highestLevelNodeDimension,
             // stop splitting, and make current node a leaf node.
@@ -202,7 +191,7 @@ public class RAQuadTree implements IAlgorithm {
                 }
             });
 
-            double rootBenefit = computeBenefit(0, this);
+            double rootBenefit = computeBenefit(this, _ncX, _ncY, _nhalfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight, _rPixelScale);
             QEntry rootEntry = new QEntry(0, _ncX, _ncY, _nhalfDimension, this, rootBenefit);
             // add root node
             queue.add(rootEntry);
@@ -244,7 +233,7 @@ public class RAQuadTree implements IAlgorithm {
                 cY = ncY - halfDimension;
                 // ignore this node if the range does not intersect with it
                 if (intersectsBBox(cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight)) {
-                    double benefitNW = computeBenefit(level + 1, node.northWest);
+                    double benefitNW = computeBenefit(node.northWest, cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight, _rPixelScale);
                     QEntry entryNW = new QEntry(level + 1, cX, cY, halfDimension, node.northWest, benefitNW);
                     queue.add(entryNW);
                     if (node.northWest.sample != null) {
@@ -257,7 +246,7 @@ public class RAQuadTree implements IAlgorithm {
                 cY = ncY - halfDimension;
                 // ignore this node if the range does not intersect with it
                 if (intersectsBBox(cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight)) {
-                    double benefitNE = computeBenefit(level + 1, node.northEast);
+                    double benefitNE = computeBenefit(node.northEast, cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight, _rPixelScale);
                     QEntry entryNE = new QEntry(level + 1, cX, cY, halfDimension, node.northEast, benefitNE);
                     queue.add(entryNE);
                     if (node.northEast.sample != null) {
@@ -270,7 +259,7 @@ public class RAQuadTree implements IAlgorithm {
                 cY = ncY + halfDimension;
                 // ignore this node if the range does not intersect with it
                 if (intersectsBBox(cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight)) {
-                    double benefitSW = computeBenefit(level + 1, node.southWest);
+                    double benefitSW = computeBenefit(node.southWest, cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight, _rPixelScale);
                     QEntry entrySW = new QEntry(level + 1, cX, cY, halfDimension, node.southWest, benefitSW);
                     queue.add(entrySW);
                     if (node.southWest.sample != null) {
@@ -283,7 +272,7 @@ public class RAQuadTree implements IAlgorithm {
                 cY = ncY + halfDimension;
                 // ignore this node if the range does not intersect with it
                 if (intersectsBBox(cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight)) {
-                    double benefitSE = computeBenefit(level + 1, node.southEast);
+                    double benefitSE = computeBenefit(node.southEast, cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight, _rPixelScale);
                     QEntry entrySE = new QEntry(level + 1, cX, cY, halfDimension, node.southEast, benefitSE);
                     queue.add(entrySE);
                     if (node.southEast.sample != null) {
@@ -303,7 +292,6 @@ public class RAQuadTree implements IAlgorithm {
          * select the best sample for each node
          *
          * V1 - select the best from only its 4 children
-         *    - store errors between sample on node and samples on children for all resolutions
          */
         public void selectSamples(double _cX, double _cY, double _halfDimension, int _level) {
             // leaf node already has the best sample
@@ -373,15 +361,8 @@ public class RAQuadTree implements IAlgorithm {
                     bestSample = this.southEast.sample;
                 }
             }
-            // best sample stored on this node
-            this.sample = bestSample;
 
-            // for all zoom levels (resolutions),
-            // compute and store the errors between best sample and all four children's best samples
-            for (int zoom = 0; zoom <= Constants.MAX_ZOOM; zoom ++) {
-                double pixelScale = 1.0 / 256 / Math.pow(2, zoom);
-                this.errors[zoom] = computeErrorAgainstChildren(this, _cX, _cY, _halfDimension, pixelScale);
-            }
+            this.sample = bestSample;
         }
     }
 
@@ -389,11 +370,9 @@ public class RAQuadTree implements IAlgorithm {
     int totalNumberOfPoints = 0;
     int totalStoredNumberOfPoints = 0;
     static long nodesCount = 0; // count quad-tree nodes
-    boolean finish = false; // loading data finish flag
 
     /** For query stats */
     static int[] numberOfNodesStoppedAtLevels; // for current query, count how many nodes stopped at a certain level
-    static int computeBenefitTimes; // for current query, count how many times compute the benefit
 
     /** For query time analysis */
     static Map<String, Double> times; // for current query, store times for different parts
@@ -403,11 +382,11 @@ public class RAQuadTree implements IAlgorithm {
     Map<String, Double> timing;
     //-Timing-//
 
-    public RAQuadTree() {
+    public RAQuadTreeV2() {
         this.quadTree = new QuadTree();
 
-        // zoom level 0 is fixed with dimension 1.0 / 256 (because one tile of the base map is 256px x 256px)
-        highestLevelNodeDimension = 1.0 / 256 / Math.pow(2, Constants.MAX_ZOOM);
+        // zoom level 0 is fixed with dimension 1.0
+        highestLevelNodeDimension = 1.0 / Math.pow(2, Constants.MAX_ZOOM);
 
         switch (Constants.RENDERING_FUNCTION.toLowerCase()) {
             case "deckgl":
@@ -447,7 +426,7 @@ public class RAQuadTree implements IAlgorithm {
         }
 
         /** For query stats */
-        numberOfNodesStoppedAtLevels = new int[Constants.MAX_ZOOM + 9 + 1];
+        numberOfNodesStoppedAtLevels = new int[Constants.MAX_ZOOM + 2];
 
         /** For query time analysis */
         times = new HashMap<>();
@@ -475,6 +454,14 @@ public class RAQuadTree implements IAlgorithm {
         System.out.println("[RA-QuadTree] inserted " + count + " points and skipped " + skip + " points.");
         System.out.println("[RA-QuadTree] insertion time: " + insertTime + " seconds.");
 
+        // select best sample for each node in the QuadTree
+        MyTimer.startTimer();
+        this.quadTree.selectSamples(0.5, 0.5, 0.5, 0);
+        MyTimer.stopTimer();
+        double selectSamplesTime = MyTimer.durationSeconds();
+        System.out.println("[RA-QuadTree] select best sample for each node is done!");
+        System.out.println("[RA-QuadTree] sample selection time: " + selectSamplesTime + " seconds.");
+
         MyTimer.stopTimer();
         double loadTime = MyTimer.durationSeconds();
 
@@ -489,26 +476,23 @@ public class RAQuadTree implements IAlgorithm {
         System.out.println("==== Until now ====");
         System.out.println("RA-QuadTree has processed " + this.totalNumberOfPoints + " points.");
         System.out.println("RA-QuadTree has stored " + this.totalStoredNumberOfPoints + " points.");
-        System.out.println("RA-QuadTree has skipped " + (this.totalNumberOfPoints - this.totalStoredNumberOfPoints) + " points.");
+        System.out.println("RA-QuadTree has skipped " + skip + " points.");
         System.out.println("RA-QuadTree has generated " + nodesCount + " nodes.");
         //-DEBUG-//
     }
 
     @Override
     public void finishLoad() {
-        this.finish = true;
-        // select best sample for each node in the QuadTree
-        MyTimer.startTimer();
-        this.quadTree.selectSamples(0.5, 0.5, 0.5, 0);
-        MyTimer.stopTimer();
-        double selectSamplesTime = MyTimer.durationSeconds();
-        System.out.println("==== Data loading finished ====");
-        System.out.println("[RA-QuadTree] select best sample for each node is done!");
-        System.out.println("[RA-QuadTree] sample selection time: " + selectSamplesTime + " seconds.");
+
     }
 
-    public static double computeErrorAgainstChildren(QuadTree _node, double _ncX, double _ncY, double _nhalfDimension,
-                                                     double _rPixelScale) {
+    public static double computeBenefit(QuadTree _node, double _ncX, double _ncY, double _nhalfDimension,
+                                        double _rcX, double _rcY, double _rhalfWidth, double _rhalfHeight,
+                                        double _rPixelScale) {
+
+        //--time--//
+        long startTime = System.nanoTime();
+
         // if already leaf, benefit is 0.0, no need to expand it
         if (_node.northWest == null) return 0.0;
 
@@ -518,107 +502,175 @@ public class RAQuadTree implements IAlgorithm {
         // TODO - verify for DeckGLRenderer
         if (resolution == 0) return 0.0;
 
-        double error;
+        double benefit;
 
+        // resolution > # points to be rendered, use pixel list rendering
         if (resolution > 4 * Constants.NODE_SAMPLE_SIZE) {
             // render the point on node
             // for pixel list rendering, background is always an empty list
             List<Pixel> rendering1 = new ArrayList<>();
+            int sampleSize1 = 0;
             if (_node.sample != null) {
+                //--time--//
+                long startTime1 = System.nanoTime();
                 renderer.render(rendering1, _ncX, _ncY, _nhalfDimension, resolution, _node.sample);
+                //--time--//
+                long endTime1 = System.nanoTime();
+                times.put("rendering", times.get("rendering") + ((double) (endTime1 - startTime1) / 1000000000.0));
+                sampleSize1 = Constants.NODE_SAMPLE_SIZE;
             }
             // render the 4 children points
             // for pixel list rendering, background is always an empty list
             List<Pixel> rendering2 = new ArrayList<>();
+            int sampleSize2 = 0;
             if (_node.northWest.sample != null) {
+                //--time--//
+                long startTime1 = System.nanoTime();
                 renderer.render(rendering2, _ncX, _ncY, _nhalfDimension, resolution, _node.northWest.sample);
+                //--time--//
+                long endTime1 = System.nanoTime();
+                times.put("rendering", times.get("rendering") + ((double) (endTime1 - startTime1) / 1000000000.0));
+                sampleSize2 += Constants.NODE_SAMPLE_SIZE;
             }
             if (_node.northEast.sample != null) {
+                //--time--//
+                long startTime1 = System.nanoTime();
                 renderer.render(rendering2, _ncX, _ncY, _nhalfDimension, resolution, _node.northEast.sample);
+                //--time--//
+                long endTime1 = System.nanoTime();
+                times.put("rendering", times.get("rendering") + ((double) (endTime1 - startTime1) / 1000000000.0));
+                sampleSize2 += Constants.NODE_SAMPLE_SIZE;
             }
             if (_node.southWest.sample != null) {
+                //--time--//
+                long startTime1 = System.nanoTime();
                 renderer.render(rendering2, _ncX, _ncY, _nhalfDimension, resolution, _node.southWest.sample);
+                //--time--//
+                long endTime1 = System.nanoTime();
+                times.put("rendering", times.get("rendering") + ((double) (endTime1 - startTime1) / 1000000000.0));
+                sampleSize2 += Constants.NODE_SAMPLE_SIZE;
             }
             if (_node.southEast.sample != null) {
+                //--time--//
+                long startTime1 = System.nanoTime();
                 renderer.render(rendering2, _ncX, _ncY, _nhalfDimension, resolution, _node.southEast.sample);
+                //--time--//
+                long endTime1 = System.nanoTime();
+                times.put("rendering", times.get("rendering") + ((double) (endTime1 - startTime1) / 1000000000.0));
+                sampleSize2 += Constants.NODE_SAMPLE_SIZE;
             }
-            error = errorMetric.error(rendering1, rendering2, renderer.realResolution(resolution));
+            //--time--//
+            long startTime1e = System.nanoTime();
+            // gain
+            double gain = errorMetric.error(rendering1, rendering2, renderer.realResolution(resolution));
+            //--time--//
+            long endTime1e = System.nanoTime();
+            times.put("error", times.get("error") + ((double) (endTime1e - startTime1e) / 1000000000.0));
+            // cost
+            int cost = sampleSize2 - sampleSize1;
+            if (cost == 0) {
+                benefit = Double.MAX_VALUE;
+            }
+            else {
+                benefit = gain / (double) cost;
+            }
+
+            //-DEBUG-//
+            if (benefit <= 0.0) {
+                System.out.println("[computeBenefit] using List<Pixel> for rendering and error.");
+                System.out.println("[computeBenefit] benefit = 0.0.");
+                System.out.println("[computeBenefit] gain = " + gain);
+                System.out.println("[computeBenefit] cost = " + cost);
+            }
         }
         // otherwise, use byte array rendering
         else {
             // render the point on node
             byte[] rendering1 = renderer.createRendering(resolution);
+            int sampleSize1 = 0;
             if (_node.sample != null) {
+                //--time--//
+                long startTime2 = System.nanoTime();
                 renderer.render(rendering1, _ncX, _ncY, _nhalfDimension, resolution, _node.sample);
+                //--time--//
+                long endTime2 = System.nanoTime();
+                times.put("rendering", times.get("rendering") + ((double) (endTime2 - startTime2) / 1000000000.0));
+                sampleSize1 = Constants.NODE_SAMPLE_SIZE;
             }
             // render the 4 children points
             byte[] rendering2 = renderer.createRendering(resolution);
+            int sampleSize2 = 0;
             if (_node.northWest.sample != null) {
+                //--time--//
+                long startTime2 = System.nanoTime();
                 renderer.render(rendering2, _ncX, _ncY, _nhalfDimension, resolution, _node.northWest.sample);
+                //--time--//
+                long endTime2 = System.nanoTime();
+                times.put("rendering", times.get("rendering") + ((double) (endTime2 - startTime2) / 1000000000.0));
+                sampleSize2 += Constants.NODE_SAMPLE_SIZE;
             }
             if (_node.northEast.sample != null) {
+                //--time--//
+                long startTime2 = System.nanoTime();
                 renderer.render(rendering2, _ncX, _ncY, _nhalfDimension, resolution, _node.northEast.sample);
+                //--time--//
+                long endTime2 = System.nanoTime();
+                times.put("rendering", times.get("rendering") + ((double) (endTime2 - startTime2) / 1000000000.0));
+                sampleSize2 += Constants.NODE_SAMPLE_SIZE;
             }
             if (_node.southWest.sample != null) {
+                //--time--//
+                long startTime2 = System.nanoTime();
                 renderer.render(rendering2, _ncX, _ncY, _nhalfDimension, resolution, _node.southWest.sample);
+                //--time--//
+                long endTime2 = System.nanoTime();
+                times.put("rendering", times.get("rendering") + ((double) (endTime2 - startTime2) / 1000000000.0));
+                sampleSize2 += Constants.NODE_SAMPLE_SIZE;
             }
             if (_node.southEast.sample != null) {
+                //--time--//
+                long startTime2 = System.nanoTime();
                 renderer.render(rendering2, _ncX, _ncY, _nhalfDimension, resolution, _node.southEast.sample);
+                //--time--//
+                long endTime2 = System.nanoTime();
+                times.put("rendering", times.get("rendering") + ((double) (endTime2 - startTime2) / 1000000000.0));
+                sampleSize2 += Constants.NODE_SAMPLE_SIZE;
             }
-            error = errorMetric.error(rendering1, rendering2, renderer.realResolution(resolution));
+            //--time--//
+            long startTime2e = System.nanoTime();
+            // gain
+            double gain = errorMetric.error(rendering1, rendering2, renderer.realResolution(resolution));
+            //--time--//
+            long endTime2e = System.nanoTime();
+            times.put("error", times.get("error") + ((double) (endTime2e - startTime2e) / 1000000000.0));
+            // cost
+            int cost = sampleSize2 - sampleSize1;
+            if (cost == 0) {
+                benefit = Double.MAX_VALUE;
+            }
+            else {
+                benefit = gain / (double) cost;
+            }
+
+            //-DEBUG-//
+            if (benefit <= 0.0) {
+                System.out.println("[byte array] benefit = 0.0.");
+                System.out.println("[byte array] gain = " + gain);
+                System.out.println("[byte array] cost = " + cost);
+                System.out.println("[byte array] resolution = " + resolution);
+                //printRenderingGray("rendering1", rendering1, resolution, true);
+                //printRenderingGray("rendering2", rendering2, resolution, true);
+            }
         }
-        return error;
-    }
-
-    public static double computeBenefit(int _level, QuadTree _node) {
-        computeBenefitTimes ++;
-
-        //--time--//
-        long startTime = System.nanoTime();
-
-        // for leaf node, it can not be expanded at all.
-        if (_node.northWest == null) return 0.0;
-
-        // for levels < zoom level 0 (2^8 = 256, zoom level 0 has 256px resolution), always expand.
-        if (_level < 8) return Double.MAX_VALUE;
-
-        int zoom = _level - 8;
-        double error = _node.errors[zoom];
-
-        double gain = error * Math.log(_node.count);
-        int sampleSize = (_node.sample == null? 0: 1);
-        int sampleSizeOfChildren = 0;
-        sampleSizeOfChildren += (_node.northWest.sample == null? 0: 1);
-        sampleSizeOfChildren += (_node.northEast.sample == null? 0: 1);
-        sampleSizeOfChildren += (_node.southWest.sample == null? 0: 1);
-        sampleSizeOfChildren += (_node.southEast.sample == null? 0: 1);
-        int cost = sampleSizeOfChildren - sampleSize;
 
         //--time--//
         long endTime = System.nanoTime();
         times.put("computeBenefit", times.get("computeBenefit") + ((double) (endTime - startTime) / 1000000000.0));
 
-        if (cost == 0) {
-            return Double.MAX_VALUE;
-        }
-        else {
-            return gain / (double) cost;
-        }
+        return benefit;
     }
 
     public byte[] answerQuery(Query query) {
-
-        if (!this.finish) {
-            System.out.println("[RA-QuadTree] has not finished loading data, will not answer this query!");
-            MyTimer.temporaryTimer.put("treeTime", 0.0);
-            MyTimer.temporaryTimer.put("aggregateTime", 0.0);
-            BinaryMessageBuilder messageBuilder = new BinaryMessageBuilder();
-            double lng = xLng(0.5);
-            double lat = yLat(0.5);
-            messageBuilder.add(lng, lat);
-            return messageBuilder.getBuffer();
-        }
-
         double lng0 = query.bbox[0];
         double lat0 = query.bbox[1];
         double lng1 = query.bbox[2];
@@ -641,6 +693,7 @@ public class RAQuadTree implements IAlgorithm {
         double iY0 = latY(lat0);
         double iX1 = lngX(lng1);
         double iY1 = latY(lat1);
+        //TODO - verify this 256
         double pixelScale = 1.0 / 256 / Math.pow(2, zoom);
         double rcX = (iX0 + iX1) / 2;
         double rcY = (iY0 + iY1) / 2;
@@ -653,11 +706,12 @@ public class RAQuadTree implements IAlgorithm {
                 "pixelScale = " + pixelScale + ";");
 
         /** For query stats*/
-        for (int i = 0; i <= Constants.MAX_ZOOM + 9; i ++) numberOfNodesStoppedAtLevels[i] = 0;
-        computeBenefitTimes = 0;
+        for (int i = 0; i <= Constants.MAX_ZOOM; i ++) numberOfNodesStoppedAtLevels[i] = 0;
 
         /** For query time analysis */
         times.put("computeBenefit", 0.0);
+        times.put("rendering", 0.0);
+        times.put("error", 0.0);
 
         MyTimer.startTimer();
         System.out.println("[RA-QuadTree] is doing a best first search with sampleSize = " + sampleSize + ".");
@@ -670,7 +724,8 @@ public class RAQuadTree implements IAlgorithm {
         System.out.println("[RA-QuadTree] tree search got " + points.size() + " data points.");
         System.out.println("[RA-QuadTree] tree search time: " + treeTime + " seconds.");
         System.out.println("[RA-QuadTree]     - compute benefit time: " + times.get("computeBenefit") + " seconds.");
-        System.out.println("[RA-QuadTree]     - compute benefit was called: " + computeBenefitTimes + " times.");
+        System.out.println("[RA-QuadTree]         - rendering time: " + times.get("rendering") + " seconds.");
+        System.out.println("[RA-QuadTree]         - compute error time: " + times.get("error") + " seconds.");
 
         // build binary result message
         MyTimer.startTimer();
@@ -693,7 +748,7 @@ public class RAQuadTree implements IAlgorithm {
         MyTimer.stopTimer();
         System.out.println("[RA-QuadTree] answer query total time: " + MyTimer.durationSeconds() + " seconds.");
         System.out.println("[RA-QuadTree] ---- # of nodes stopping at each level ----");
-        for (int i = 0; i <= Constants.MAX_ZOOM + 9; i ++) {
+        for (int i = 0; i <= Constants.MAX_ZOOM; i ++) {
             System.out.println("Level " + i + ": " + numberOfNodesStoppedAtLevels[i]);
         }
 

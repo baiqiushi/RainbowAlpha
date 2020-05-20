@@ -325,6 +325,11 @@ public class QuadTreeAggregator implements IAlgorithm {
         //-DEBUG-//
     }
 
+    @Override
+    public void finishLoad() {
+
+    }
+
     public byte[] answerQuery(Query query) {
         double lng0 = query.bbox[0];
         double lat0 = query.bbox[1];

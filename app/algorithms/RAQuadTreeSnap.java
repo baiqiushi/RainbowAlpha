@@ -650,6 +650,11 @@ public class RAQuadTreeSnap implements IAlgorithm {
         //-DEBUG-//
     }
 
+    @Override
+    public void finishLoad() {
+
+    }
+
     public static double estimateProfit(Point sample, int[] counts) {
 
         int exactSampleSize = Math.max(counts[exactLevel], 1);

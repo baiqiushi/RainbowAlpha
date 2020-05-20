@@ -1228,6 +1228,11 @@ public class RAQuadTreeV0 implements IAlgorithm {
         //-DEBUG-//
     }
 
+    @Override
+    public void finishLoad() {
+
+    }
+
     public static double estimateProfit(List<Point> samples, int[] counts) {
 
         int exactSampleSize = Math.max(counts[exactLevel], 1);

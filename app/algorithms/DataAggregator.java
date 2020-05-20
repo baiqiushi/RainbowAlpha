@@ -57,6 +57,11 @@ public class DataAggregator implements IAlgorithm {
         MyMemory.printMemory();
     }
 
+    @Override
+    public void finishLoad() {
+
+    }
+
     /**
      * Get list of points references for given visible region
      *
