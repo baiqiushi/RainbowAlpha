@@ -179,13 +179,13 @@ public class RAQuadTree implements IAlgorithm {
          * @param _rcY
          * @param _rhalfWidth
          * @param _rhalfHeight
-         * @param _rPixelScale
+         * @param _zoom - zoom level of current query
          * @param _targetSampleSize
          * @return
          */
         public List<Point> bfs(double _ncX, double _ncY, double _nhalfDimension,
                                double _rcX, double _rcY, double _rhalfWidth, double _rhalfHeight,
-                               double _rPixelScale, int _targetSampleSize) {
+                               int _zoom, int _targetSampleSize) {
 
             List<Point> result = new ArrayList<>();
 
@@ -202,7 +202,7 @@ public class RAQuadTree implements IAlgorithm {
                 }
             });
 
-            double rootBenefit = computeBenefit(0, this);
+            double rootBenefit = computeBenefit(_zoom, 0, this);
             QEntry rootEntry = new QEntry(0, _ncX, _ncY, _nhalfDimension, this, rootBenefit);
             // add root node
             queue.add(rootEntry);
@@ -244,7 +244,7 @@ public class RAQuadTree implements IAlgorithm {
                 cY = ncY - halfDimension;
                 // ignore this node if the range does not intersect with it
                 if (intersectsBBox(cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight)) {
-                    double benefitNW = computeBenefit(level + 1, node.northWest);
+                    double benefitNW = computeBenefit(_zoom, level + 1, node.northWest);
                     QEntry entryNW = new QEntry(level + 1, cX, cY, halfDimension, node.northWest, benefitNW);
                     queue.add(entryNW);
                     if (node.northWest.sample != null) {
@@ -257,7 +257,7 @@ public class RAQuadTree implements IAlgorithm {
                 cY = ncY - halfDimension;
                 // ignore this node if the range does not intersect with it
                 if (intersectsBBox(cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight)) {
-                    double benefitNE = computeBenefit(level + 1, node.northEast);
+                    double benefitNE = computeBenefit(_zoom, level + 1, node.northEast);
                     QEntry entryNE = new QEntry(level + 1, cX, cY, halfDimension, node.northEast, benefitNE);
                     queue.add(entryNE);
                     if (node.northEast.sample != null) {
@@ -270,7 +270,7 @@ public class RAQuadTree implements IAlgorithm {
                 cY = ncY + halfDimension;
                 // ignore this node if the range does not intersect with it
                 if (intersectsBBox(cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight)) {
-                    double benefitSW = computeBenefit(level + 1, node.southWest);
+                    double benefitSW = computeBenefit(_zoom, level + 1, node.southWest);
                     QEntry entrySW = new QEntry(level + 1, cX, cY, halfDimension, node.southWest, benefitSW);
                     queue.add(entrySW);
                     if (node.southWest.sample != null) {
@@ -283,7 +283,7 @@ public class RAQuadTree implements IAlgorithm {
                 cY = ncY + halfDimension;
                 // ignore this node if the range does not intersect with it
                 if (intersectsBBox(cX, cY, halfDimension, _rcX, _rcY, _rhalfWidth, _rhalfHeight)) {
-                    double benefitSE = computeBenefit(level + 1, node.southEast);
+                    double benefitSE = computeBenefit(_zoom, level + 1, node.southEast);
                     QEntry entrySE = new QEntry(level + 1, cX, cY, halfDimension, node.southEast, benefitSE);
                     queue.add(entrySE);
                     if (node.southEast.sample != null) {
@@ -570,7 +570,7 @@ public class RAQuadTree implements IAlgorithm {
         return error;
     }
 
-    public static double computeBenefit(int _level, QuadTree _node) {
+    public static double computeBenefit(int _zoom, int _level, QuadTree _node) {
         computeBenefitTimes ++;
 
         //--time--//
@@ -582,8 +582,7 @@ public class RAQuadTree implements IAlgorithm {
         // for levels < zoom level 0 (2^8 = 256, zoom level 0 has 256px resolution), always expand.
         if (_level < 8) return Double.MAX_VALUE;
 
-        int zoom = _level - 8;
-        double error = _node.errors[zoom];
+        double error = _node.errors[_zoom];
 
         double gain = error * Math.log(_node.count);
         int sampleSize = (_node.sample == null? 0: 1);
@@ -662,7 +661,7 @@ public class RAQuadTree implements IAlgorithm {
         MyTimer.startTimer();
         System.out.println("[RA-QuadTree] is doing a best first search with sampleSize = " + sampleSize + ".");
         List<Point> points = this.quadTree.bfs(0.5, 0.5, 0.5,
-                rcX, rcY, rhalfWidth, rhalfHeight, pixelScale, sampleSize);
+                rcX, rcY, rhalfWidth, rhalfHeight, zoom, sampleSize);
         MyTimer.stopTimer();
         double treeTime = MyTimer.durationSeconds();
 
