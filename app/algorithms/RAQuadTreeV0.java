@@ -7,7 +7,7 @@ import util.*;
 import util.render.DeckGLRenderer;
 import util.render.IErrorMetric;
 import util.render.IRenderer;
-import util.render.MeanSquaredError;
+import util.render.L2Error;
 
 import java.util.*;
 
@@ -88,8 +88,8 @@ public class RAQuadTreeV0 implements IAlgorithm {
             if (this.samples == null && this.northWest == null) {
                 this.samples = new ArrayList<>();
                 this.samples.add(point);
-                this.rendering = aggregator.createRendering(oneNodeResolution, true);
-                aggregator.render(this.rendering, cX, cY, halfDimension, oneNodeResolution, true, point);
+                this.rendering = aggregator.createRendering(oneNodeResolution);
+                aggregator.render(this.rendering, cX, cY, halfDimension, oneNodeResolution, point);
                 this.count = 1;
                 return true;
             }
@@ -113,7 +113,7 @@ public class RAQuadTreeV0 implements IAlgorithm {
             }
 
             // update the rendering of this node
-            boolean isDifferent = aggregator.render(this.rendering, cX, cY, halfDimension, oneNodeResolution, true, point);
+            boolean isDifferent = aggregator.render(this.rendering, cX, cY, halfDimension, oneNodeResolution, point);
             // if new rendering is different, store this point within samples
             // (only start storing samples from level 10)
             if (isDifferent) this.samples.add(point);
@@ -1155,7 +1155,7 @@ public class RAQuadTreeV0 implements IAlgorithm {
 
         renderer = new DeckGLRenderer(Constants.RADIUS_IN_PIXELS);
 
-        errorMetric = new MeanSquaredError();
+        errorMetric = new L2Error();
 
         // initialize the timing map
         if (keepTiming) {
@@ -1376,9 +1376,9 @@ public class RAQuadTreeV0 implements IAlgorithm {
         //--time--//
         long startTime0 = System.nanoTime();
         // render current sampleSize points to rendering0
-        byte[] rendering0 = renderer.createRendering(resolution, true);
+        byte[] rendering0 = renderer.createRendering(resolution);
         for (int i = 0; i < sampleSize; i++) {
-            renderer.render(rendering0, _ncX, _ncY, _nhalfDimension, resolution, true, _node.samples.get(i));
+            renderer.render(rendering0, _ncX, _ncY, _nhalfDimension, resolution, _node.samples.get(i));
         }
         //--time--//
         long endTime0 = System.nanoTime();
@@ -1400,9 +1400,9 @@ public class RAQuadTreeV0 implements IAlgorithm {
             //--time--//
             long startTime1 = System.nanoTime();
             // render newResultSize points to rendering1
-            byte[] rendering1 = renderer.createRendering(resolution, true);
+            byte[] rendering1 = renderer.createRendering(resolution);
             for (Point point : enlargedSamples) {
-                renderer.render(rendering1, _ncX, _ncY, _nhalfDimension, resolution, true, point);
+                renderer.render(rendering1, _ncX, _ncY, _nhalfDimension, resolution, point);
             }
             //--time--//
             long endTime1 = System.nanoTime();
@@ -1411,7 +1411,7 @@ public class RAQuadTreeV0 implements IAlgorithm {
             //--time--//
             long startTime1e = System.nanoTime();
             // compute the error between rendering0 and rendering1 as the gain1
-            double gain1 = errorMetric.totalError(rendering0, rendering1, resolution, true);
+            double gain1 = errorMetric.error(rendering0, rendering1, resolution);
             //--time--//
             long endTime1e = System.nanoTime();
             times.put("computeError", times.get("computeError") + ((double) (endTime1e - startTime1e) / 1000000000.0));
@@ -1499,9 +1499,9 @@ public class RAQuadTreeV0 implements IAlgorithm {
             //--time--//
             long startTime2 = System.nanoTime();
             // render samplesOnChildren to rendering2
-            byte[] rendering2 = renderer.createRendering(resolution, true);
+            byte[] rendering2 = renderer.createRendering(resolution);
             for (Point point : samplesOnChildren) {
-                renderer.render(rendering2, _ncX, _ncY, _nhalfDimension, resolution, true, point);
+                renderer.render(rendering2, _ncX, _ncY, _nhalfDimension, resolution, point);
             }
             //--time--//
             long endTime2 = System.nanoTime();
@@ -1510,7 +1510,7 @@ public class RAQuadTreeV0 implements IAlgorithm {
             //--time--//
             long startTime2e = System.nanoTime();
             // compute the error between rendering0 and rendering2 as the gain2
-            double gain2 = errorMetric.totalError(rendering0, rendering2, resolution, true);
+            double gain2 = errorMetric.error(rendering0, rendering2, resolution);
             //--time--//
             long endTime2e = System.nanoTime();
             times.put("computeError", times.get("computeError") + ((double) (endTime2e - startTime2e) / 1000000000.0));

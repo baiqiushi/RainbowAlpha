@@ -9,14 +9,14 @@ public class DeckGLRendererTest {
 
         int resolution = 64;
 
-        byte[] rendering = renderer.createRendering(resolution, true);
+        byte[] rendering = renderer.createRendering(resolution);
 
         Point point = new Point(0.18738888888888888, 0.3833203873543357);
         double ncX = 0.1796875;
         double ncY = 0.3828125;
         double halfDimension = 0.0078125;
 
-        renderer.render(rendering, ncX, ncY, halfDimension, resolution, true, point);
+        renderer.render(rendering, ncX, ncY, halfDimension, resolution, point);
 
         printRenderingGray("test", rendering, resolution);
     }

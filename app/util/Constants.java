@@ -38,4 +38,12 @@ public class Constants {
     public static String SAMPLING_METHOD = "stratified";
 
     public static double STOP_CRITERIA = 100;
+
+    // For new RAQuadTree
+    public static int NODE_SAMPLE_SIZE = 1;
+    public static int NODE_RESOLUTION = 1;
+    public static int DEFAULT_SAMPLE_SIZE = 100000; // 100K
+
+    public static String RENDERING_FUNCTION = "snap";
+    public static String ERROR_FUNCTION = "L1";
 }

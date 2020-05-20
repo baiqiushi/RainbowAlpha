@@ -108,6 +108,9 @@ public class Agent extends AbstractActor {
         Constants.SAMPLING_METHOD = this.config.getString("sampling.method");
 
         Constants.STOP_CRITERIA = this.config.getDouble("stop.criteria");
+
+        Constants.RENDERING_FUNCTION = this.config.getString("rendering.function");
+        Constants.ERROR_FUNCTION = this.config.getString("error.function");
     }
 
     public static Props getProps() {
