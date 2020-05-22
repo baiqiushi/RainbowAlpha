@@ -5,17 +5,12 @@ import model.Query;
 import util.*;
 import util.render.*;
 
+import java.io.*;
 import java.util.*;
 
 import static util.Mercator.*;
 
 public class RAQuadTree implements IAlgorithm {
-
-    public static double highestLevelNodeDimension;
-
-    public static IRenderer renderer;
-
-    public static IErrorMetric errorMetric;
 
     public class QuadTree {
         public Point sample;
@@ -33,6 +28,146 @@ public class RAQuadTree implements IAlgorithm {
         public QuadTree northEast;
         public QuadTree southWest;
         public QuadTree southEast;
+
+        /**
+         * Pre-order traverse the quadtree and write each node to one line in the buffered writer
+         *
+         * each node format:
+         *   level (int), cx (double), cy (double), halfDimension (double), count (int),
+         *   sample.x (double), sample.y (double), errors[0] (double), errors[1] (double), ...
+         *
+         * @param bufferedWriter
+         * @param _cX
+         * @param _cY
+         * @param _halfDimension
+         * @param _level
+         */
+        public void writeToFile(BufferedWriter bufferedWriter, double _cX, double _cY, double _halfDimension, int _level) throws IOException {
+            // write current node
+            bufferedWriter.write(String.valueOf(_level));
+            bufferedWriter.write(",");
+            bufferedWriter.write(String.valueOf(_cX));
+            bufferedWriter.write(",");
+            bufferedWriter.write(String.valueOf(_cY));
+            bufferedWriter.write(",");
+            bufferedWriter.write(String.valueOf(_halfDimension));
+            bufferedWriter.write(",");
+            bufferedWriter.write(String.valueOf(this.count));
+            bufferedWriter.write(",");
+            if (this.sample != null) {
+                bufferedWriter.write(String.valueOf(this.sample.getX()));
+                bufferedWriter.write(",");
+                bufferedWriter.write(String.valueOf(this.sample.getY()));
+            }
+            else {
+                bufferedWriter.write(",");
+            }
+            for (int zoom = 0; zoom <= Constants.MAX_ZOOM; zoom ++) {
+                bufferedWriter.write(",");
+                bufferedWriter.write(String.valueOf(this.errors[zoom]));
+            }
+            bufferedWriter.newLine();
+
+            // leaf node write an empty line for each child
+            if (this.northWest == null) {
+                // nw
+                bufferedWriter.write("");
+                bufferedWriter.newLine();
+                // ne
+                bufferedWriter.write("");
+                bufferedWriter.newLine();
+                // sw
+                bufferedWriter.write("");
+                bufferedWriter.newLine();
+                // se
+                bufferedWriter.write("");
+                bufferedWriter.newLine();
+                return;
+            }
+            else {
+                // recursively write the children
+                double halfDimension = _halfDimension / 2;
+                this.northWest.writeToFile(bufferedWriter, _cX - halfDimension, _cY - halfDimension, halfDimension, _level + 1);
+                this.northEast.writeToFile(bufferedWriter, _cX + halfDimension, _cY - halfDimension, halfDimension, _level + 1);
+                this.southWest.writeToFile(bufferedWriter, _cX - halfDimension, _cY + halfDimension, halfDimension, _level + 1);
+                this.southEast.writeToFile(bufferedWriter, _cX + halfDimension, _cY + halfDimension, halfDimension, _level + 1);
+            }
+        }
+
+        /**
+         * Pre-order traverse the quadtree and read each node from one line in the buffered reader
+         *
+         * each node format:
+         *   level (int), cx (double), cy (double), halfDimension (double), count (int),
+         *   sample.x (double), sample.y (double), errors[0] (double), errors[1] (double), ...
+         *
+         * @param bufferedReader
+         * @param _cX
+         * @param _cY
+         * @param _halfDimension
+         * @param _level
+         */
+        public QuadTree readFromFile(BufferedReader bufferedReader, double _cX, double _cY, double _halfDimension, int _level) throws IOException {
+            String line = bufferedReader.readLine();
+
+            // end of file
+            if (line == null) return null;
+
+            // null for this node
+            if (line.isEmpty()) {
+                return null;
+            }
+
+            try {
+                // read current node
+                QuadTree node = new QuadTree();
+                String[] attributes = line.split(",");
+                int i = 0;
+                int level = Integer.valueOf(attributes[i++]);
+                if (level != _level)
+                    System.out.println("[readFromFile] should be level " + _level + ", but found level " + level + " in file: " + line);
+
+                double cX = Double.valueOf(attributes[i++]);
+                if (Math.abs(cX - _cX) > 1E-4)
+                    System.out.println("[readFromFile] should be cX " + _cX + ", but found cX " + cX + " in file: " + line);
+
+                double cY = Double.valueOf(attributes[i++]);
+                if (Math.abs(cY - _cY) > 1E-14)
+                    System.out.println("[readFromFile] should be cY " + _cY + ", but found cY " + cY + " in file: " + line);
+
+                double halfDimension = Double.valueOf(attributes[i++]);
+                if (Math.abs(halfDimension - _halfDimension) > 1E-4)
+                    System.out.println("[readFromFile] should be halfDimension " + _halfDimension + ", but found halfDimension " + halfDimension + " in file: " + line);
+
+                node.count = Integer.valueOf(attributes[i++]);
+
+                if (attributes[i].isEmpty()) {
+                    node.sample = null;
+                    i += 2;
+                } else {
+                    double x = Double.valueOf(attributes[i++]);
+                    double y = Double.valueOf(attributes[i++]);
+                    node.sample = new Point(x, y);
+                }
+
+                for (int zoom = 0; zoom <= Constants.MAX_ZOOM; zoom++) {
+                    node.errors[zoom] = Double.valueOf(attributes[i++]);
+                }
+
+                // recursively read the children
+                halfDimension = _halfDimension / 2;
+                node.northWest = this.readFromFile(bufferedReader, _cX - halfDimension, _cY - halfDimension, halfDimension, _level + 1);
+                node.northEast = this.readFromFile(bufferedReader, _cX + halfDimension, _cY - halfDimension, halfDimension, _level + 1);
+                node.southWest = this.readFromFile(bufferedReader, _cX - halfDimension, _cY + halfDimension, halfDimension, _level + 1);
+                node.southEast = this.readFromFile(bufferedReader, _cX + halfDimension, _cY + halfDimension, halfDimension, _level + 1);
+                return node;
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+                System.out.println(line);
+            }
+            return null;
+        }
 
         public boolean containsPoint(double cX, double cY, double halfDimension, Point point) {
             if (point.getX() >= (cX - halfDimension)
@@ -383,7 +518,15 @@ public class RAQuadTree implements IAlgorithm {
                 this.errors[zoom] = computeErrorAgainstChildren(this, _cX, _cY, _halfDimension, pixelScale);
             }
         }
+
+
     }
+
+    public static double highestLevelNodeDimension;
+
+    public static IRenderer renderer;
+
+    public static IErrorMetric errorMetric;
 
     QuadTree quadTree;
     int totalNumberOfPoints = 0;
@@ -453,6 +596,52 @@ public class RAQuadTree implements IAlgorithm {
         times = new HashMap<>();
 
         MyMemory.printMemory();
+    }
+
+    public boolean readFromFile(String fileName) {
+        System.out.println("[RA-QuadTree] read from file " + fileName + " ... ...");
+
+        try {
+            BufferedReader bufferedReader = new BufferedReader(new FileReader(fileName));
+            //--time--//
+            long startTime = System.nanoTime();
+            this.quadTree = quadTree.readFromFile(bufferedReader, 0.5, 0.5, 0.5, 0);
+            bufferedReader.close();
+            //--time--//
+            long endTime = System.nanoTime();
+            System.out.println("[RA-QuadTree] read from file " + fileName + " done! Time: " + ((double) (endTime - startTime) / 1000000000.0) + " seconds.");
+            finish = true;
+            return true;
+        } catch (IOException e) {
+            System.out.println("[RA-QuadTree] read from file " + fileName + " failed!");
+            e.printStackTrace();
+        }
+        return false;
+    }
+
+    public boolean writeToFile(String fileName) {
+        System.out.println("[RA-QuadTree] write to file " + fileName + " ... ...");
+
+        try {
+            File file = new File(fileName);
+            FileOutputStream fileOutputStream = new FileOutputStream(file);
+            BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(fileOutputStream));
+            //--time--//
+            long startTime = System.nanoTime();
+            quadTree.writeToFile(bufferedWriter, 0.5, 0.5, 0.5, 0);
+            bufferedWriter.close();
+            fileOutputStream.close();
+            //--time--//
+            long endTime = System.nanoTime();
+            System.out.println("[RA-QuadTree] write to file " + fileName + " done! Time: " + ((double) (endTime - startTime) / 1000000000.0) + " seconds.");
+            return true;
+        }
+        catch (IOException e) {
+            System.out.println("[RA-QuadTree] write to file " + fileName + " failed!");
+            e.printStackTrace();
+        }
+
+        return false;
     }
 
     public void load(List<Point> points) {

@@ -134,6 +134,16 @@ public class DataExplorer implements IAlgorithm {
         return messageBuilder.getBuffer();
     }
 
+    @Override
+    public boolean readFromFile(String fileName) {
+        return false;
+    }
+
+    @Override
+    public boolean writeToFile(String fileName) {
+        return false;
+    }
+
     private void printTiming() {
         System.out.println("[Total Time] " + timing.get("total") + " seconds.");
     }

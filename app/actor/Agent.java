@@ -101,6 +101,8 @@ public class Agent extends AbstractActor {
         Constants.DB_PASSWORD = this.config.getString("db.password");
         Constants.DB_TABLENAME = this.config.getString("db.tablename");
 
+        Constants.DATASET_NAME = this.config.getString("dataset.name");
+
         Constants.MSG_TYPE = this.config.getInt("message.type");
 
         Constants.TILE_RESOLUTION = this.config.getInt("tile.resolution");
@@ -181,11 +183,19 @@ public class Agent extends AbstractActor {
 
         // if given cluster key does NOT exists, do the loadData and clusterData first,
         if (!algorithms.containsKey(clusterKey)) {
-            handleQueryProgressively(_request);
+            // first check if we can load file to algorithm
+            boolean success = loadFileToAlgorithm(query);
+            if (success) {
+                answerQuery(query, 100);
+            }
+            // otherwise, we can only do progressive data loading from DB
+            else {
+                handleQueryProgressively(_request);
+            }
         }
         // otherwise, answer the query directly
         else {
-            answerQuery(_request.query, 100);
+            answerQuery(query, 100);
         }
     }
 
@@ -323,6 +333,9 @@ public class Agent extends AbstractActor {
         // notify algorithm that data loading is done.
         finishLoad(query);
 
+        // save algorithm to file.
+        saveAlgorithmToFile(query);
+
         // for experiments analysis
         System.out.println("========== Experiment Analysis ==========");
         System.out.println("Progressive Query: ");
@@ -406,6 +419,18 @@ public class Agent extends AbstractActor {
         }
 
         return true;
+    }
+
+    private boolean loadFileToAlgorithm(Query query) {
+        String fileName = Constants.DATASET_NAME + "-" + query.key + ".raqt";
+        IAlgorithm algorithm = getAlgorithm(query);
+        return algorithm.readFromFile(fileName);
+    }
+
+    private boolean saveAlgorithmToFile(Query query) {
+        String fileName = Constants.DATASET_NAME + "-" + query.key + ".raqt";
+        IAlgorithm algorithm = getAlgorithm(query);
+        return algorithm.writeToFile(fileName);
     }
 
     private IAlgorithm getAlgorithm(Query query) {

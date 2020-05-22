@@ -22,6 +22,9 @@ public class Constants {
     public static String DB_PASSWORD;
     public static String DB_TABLENAME;
 
+    // Serialization
+    public static String DATASET_NAME;
+
     // Message
     public static int DOUBLE_BYTES = 8;
     public static int INT_BYTES = 4;

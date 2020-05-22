@@ -242,6 +242,16 @@ public class DataAggregator implements IAlgorithm {
         return new byte[0];
     }
 
+    @Override
+    public boolean readFromFile(String fileName) {
+        return false;
+    }
+
+    @Override
+    public boolean writeToFile(String fileName) {
+        return false;
+    }
+
     private void printTiming() {
         System.out.println("[Total Time] " + timing.get("total") + " seconds.");
     }

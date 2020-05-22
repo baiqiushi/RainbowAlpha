@@ -23,4 +23,8 @@ public interface IAlgorithm {
      * @return - byte[] binary format result message (including preserved HEADER_SIZE header)
      */
     byte[] answerQuery(Query query);
+
+    boolean readFromFile(String fileName);
+
+    boolean writeToFile(String fileName);
 }
