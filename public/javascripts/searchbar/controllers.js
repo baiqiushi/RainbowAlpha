@@ -31,11 +31,11 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
             $scope.disableSearchButton = false;
         });
 
-        $scope.algorithms = ["DataExplorer", "DataAggregator", "QuadTree", "GQuadTree", "RAQuadTree", "RAQuadTreeSnap"];
+        $scope.algorithms = ["RAQuadTree", "RAQuadTreeDistance", "DataExplorer", "DataAggregator", "QuadTree", "GQuadTree"];
         $scope.mwVisualizationTypes = ["scatter", "heat"];
         $scope.feVisualizationTypes = ["scatter", "heat"];
         $scope.fileVisualizationTypes = ["scatter", "heat"];
-        $scope.scatterTypes = ["gl-pixel", "gl-raster", "leaflet", "deck-gl"];
+        $scope.scatterTypes = ["gl-pixel", "deck-gl", "gl-raster", "leaflet"];
         $scope.recording = false;
         $scope.replaying = false;
 
@@ -468,7 +468,13 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
         option.text = "0";
         option.value = "0";
         $scope.selectSampleSize.add(option);
-        for (let i = 5; i <= 20; i += 5) {
+        for (let i = 1; i < 10; i += 1) {
+          let option = document.createElement("option");
+          option.text = i + "K";
+          option.value = "" + i * 1000;
+          $scope.selectSampleSize.add(option);
+        }
+        for (let i = 10; i <= 20; i += 5) {
           let option = document.createElement("option");
           option.text = i + "K";
           option.value = "" + i * 1000;
