@@ -1,9 +1,10 @@
 angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
   .controller("MapCtrl", function($scope, $timeout, leafletData, moduleManager) {
 
-    $scope.mode = "middleware"; // "frontend" / "middleware"
+    $scope.mode = "middleware"; // "frontend" / "middleware" / "file"
     $scope.mwVisualizationType = "scatter"; // "heat" / "scatter"
     $scope.feVisualizationType = "scatter"; // "heat" / "scatter"
+    $scope.fileVisualizationType = "scatter"; // "heat" / "scatter"
     $scope.scatterType = "gl-pixel"; // "gl-pixel" / "gl-raster" / "leaflet" / "deck-gl"
     $scope.pointRadius = 1; // default point radius
     $scope.opacity = 1.0; // default opacity
@@ -247,6 +248,9 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
             else if ($scope.mode === "frontend") {
               $scope.cleanFELayers();
             }
+            else if ($scope.mode === "file") {
+              $scope.cleanFELayers();
+            }
             $scope.mode = e.mode;
             console.log("switch mode to '" + $scope.mode + "'");
           }
@@ -355,6 +359,27 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
                 break;
               case "scatter":
                 $scope.cleanClusterLayer();
+                $scope.cleanHeatLayer();
+                if ($scope.rawData) {
+                  $scope.drawFEScatterLayer($scope.rawData);
+                }
+                break;
+            }
+          }
+        });
+
+        moduleManager.subscribeEvent(moduleManager.EVENT.CHANGE_FILE_VISUALIZATION_TYPE, function(e) {
+          console.log("switch file visualization type to " + e.fileVisualizationType);
+          $scope.fileVisualizationType = e.fileVisualizationType;
+          if ($scope.mode === "file") {
+            switch (e.fileVisualizationType) {
+              case "heat":
+                $scope.cleanScatterLayer();
+                if ($scope.rawData) {
+                  $scope.drawFEHeatLayer($scope.rawData);
+                }
+                break;
+              case "scatter":
                 $scope.cleanHeatLayer();
                 if ($scope.rawData) {
                   $scope.drawFEScatterLayer($scope.rawData);
@@ -544,7 +569,7 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
       $scope.waitForWS();
 
 
-      // create save button
+      // create screenshot button
       $scope.screenshotButton = document.createElement("button");
       $scope.screenshotButton.className = "float";
       $scope.screenshotButton.id = "screenshot-btn";
@@ -566,6 +591,26 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
           a.download = 'screenshot.png';
           a.click();
         });
+      });
+
+      /** file mode */
+      // handler for load data button
+      moduleManager.subscribeEvent(moduleManager.EVENT.LOAD_DATA, function(e) {
+        console.log("===== Data loaded =====");
+        console.log(JSON.stringify(e.data));
+
+        if(e.data.length > 0) {
+          $scope.pointsCount = e.data.length;
+          moduleManager.publishEvent(moduleManager.EVENT.CHANGE_RESULT_COUNT, {pointsCount: $scope.pointsCount});
+          switch ($scope.fileVisualizationType) {
+            case "heat":
+              $scope.drawFEHeatLayer(e.data);
+              break;
+            case "scatter":
+              $scope.drawFEScatterLayer(e.data);
+              break;
+          }
+        }
       });
     };
 
