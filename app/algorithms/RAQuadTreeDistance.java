@@ -661,7 +661,7 @@ public class RAQuadTreeDistance implements IAlgorithm {
         // total error of children
         double sumErrorChildren = _node.northWest.error + _node.northEast.error + _node.southWest.error + _node.southEast.error;
 
-        double gain = error - sumErrorChildren;
+        double gain = error - (sumErrorChildren / 4.0);
         int sampleSize = (_node.sample == null? 0: 1);
         int sampleSizeOfChildren = 0;
         sampleSizeOfChildren += (_node.northWest.sample == null? 0: 1);
