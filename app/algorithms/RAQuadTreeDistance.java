@@ -495,8 +495,8 @@ public class RAQuadTreeDistance implements IAlgorithm {
                 sumDistance += this.southEast.count * this.southEast.sample.distanceTo(this.sample);
             }
 
-            // error of this node is the weighted average distance between this centroid and the four children
-            this.error = sumDistance / sumCount;
+            // error of this node is the sum of weighted distance between this centroid and the four children
+            this.error = sumDistance;
         }
 
     }
@@ -658,28 +658,10 @@ public class RAQuadTreeDistance implements IAlgorithm {
         // current error
         double error = _node.error;
 
-        // average weighted error of children
-        double sumErrorChildren = 0.0;
-        double sumCountChildren = 0.0;
-        if (_node.northWest.sample != null) {
-            sumErrorChildren += _node.northWest.count * _node.northWest.error;
-            sumCountChildren += _node.northWest.count;
-        }
-        if (_node.northEast.sample != null) {
-            sumErrorChildren += _node.northEast.count * _node.northEast.error;
-            sumCountChildren += _node.northEast.count;
-        }
-        if (_node.southWest.sample != null) {
-            sumErrorChildren += _node.southWest.count * _node.southWest.error;
-            sumCountChildren += _node.southWest.count;
-        }
-        if (_node.southEast.sample != null) {
-            sumErrorChildren += _node.southEast.count * _node.southEast.error;
-            sumCountChildren += _node.southEast.count;
-        }
-        double errorChildren = sumErrorChildren / sumCountChildren;
+        // total error of children
+        double sumErrorChildren = _node.northWest.error + _node.northEast.error + _node.southWest.error + _node.southEast.error;
 
-        double gain = error - errorChildren;
+        double gain = error - sumErrorChildren;
         int sampleSize = (_node.sample == null? 0: 1);
         int sampleSizeOfChildren = 0;
         sampleSizeOfChildren += (_node.northWest.sample == null? 0: 1);
