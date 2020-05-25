@@ -47,16 +47,6 @@ public class RAQuadTreeDistance implements IAlgorithm {
          */
         public void writeToFile(BufferedWriter bufferedWriter, double _cX, double _cY, double _halfDimension, int _level) throws IOException {
             // write current node
-            bufferedWriter.write(String.valueOf(_level));
-            bufferedWriter.write(",");
-            bufferedWriter.write(String.valueOf(_cX));
-            bufferedWriter.write(",");
-            bufferedWriter.write(String.valueOf(_cY));
-            bufferedWriter.write(",");
-            bufferedWriter.write(String.valueOf(_halfDimension));
-            bufferedWriter.write(",");
-            bufferedWriter.write(String.valueOf(this.count));
-            bufferedWriter.write(",");
             if (this.sample != null) {
                 bufferedWriter.write(String.valueOf(this.sample.getX()));
                 bufferedWriter.write(",");
@@ -124,24 +114,6 @@ public class RAQuadTreeDistance implements IAlgorithm {
                 QuadTree node = new QuadTree();
                 String[] attributes = line.split(",");
                 int i = 0;
-                int level = Integer.valueOf(attributes[i++]);
-                if (level != _level)
-                    System.out.println("[readFromFile] should be level " + _level + ", but found level " + level + " in file: " + line);
-
-                double cX = Double.valueOf(attributes[i++]);
-                if (Math.abs(cX - _cX) > 1E-4)
-                    System.out.println("[readFromFile] should be cX " + _cX + ", but found cX " + cX + " in file: " + line);
-
-                double cY = Double.valueOf(attributes[i++]);
-                if (Math.abs(cY - _cY) > 1E-14)
-                    System.out.println("[readFromFile] should be cY " + _cY + ", but found cY " + cY + " in file: " + line);
-
-                double halfDimension = Double.valueOf(attributes[i++]);
-                if (Math.abs(halfDimension - _halfDimension) > 1E-4)
-                    System.out.println("[readFromFile] should be halfDimension " + _halfDimension + ", but found halfDimension " + halfDimension + " in file: " + line);
-
-                node.count = Integer.valueOf(attributes[i++]);
-
                 if (attributes[i].isEmpty()) {
                     node.sample = null;
                     i += 2;
@@ -154,7 +126,7 @@ public class RAQuadTreeDistance implements IAlgorithm {
                 node.error = Double.valueOf(attributes[i++]);
 
                 // recursively read the children
-                halfDimension = _halfDimension / 2;
+                double halfDimension = _halfDimension / 2;
                 node.northWest = this.readFromFile(bufferedReader, _cX - halfDimension, _cY - halfDimension, halfDimension, _level + 1);
                 node.northEast = this.readFromFile(bufferedReader, _cX + halfDimension, _cY - halfDimension, halfDimension, _level + 1);
                 node.southWest = this.readFromFile(bufferedReader, _cX - halfDimension, _cY + halfDimension, halfDimension, _level + 1);
