@@ -483,6 +483,10 @@ public class Agent extends AbstractActor {
                 case "raqtd":
                     algorithm = new RAQuadTreeDistance();
                     break;
+                case "raquadtreedistancev2":
+                case "raqtdv2":
+                    algorithm = new RAQuadTreeDistanceV2();
+                    break;
                 default:
                     return null;
             }
