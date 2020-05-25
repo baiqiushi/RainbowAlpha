@@ -474,13 +474,13 @@ angular.module("clustermap.searchbar", ["clustermap.common"])
           option.value = "" + i * 1000;
           $scope.selectSampleSize.add(option);
         }
-        for (let i = 10; i <= 20; i += 5) {
+        for (let i = 10; i <= 100; i += 10) {
           let option = document.createElement("option");
           option.text = i + "K";
           option.value = "" + i * 1000;
           $scope.selectSampleSize.add(option);
         }
-        for (let i = 25; i <= 500; i += 25) {
+        for (let i = 200; i <= 900; i += 100) {
           let option = document.createElement("option");
           option.text = i + "K";
           option.value = "" + i * 1000;
