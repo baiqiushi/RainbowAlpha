@@ -499,13 +499,15 @@ public class RAQuadTreeDistanceV2 implements IAlgorithm {
         // zoom level 0 is fixed with dimension 1.0 / 256 (because one tile of the base map is 256px x 256px)
         highestLevelNodeDimension = 1.0 / 256 / Math.pow(2, Constants.MAX_ZOOM);
 
-        System.out.println("[RA-QuadTree-Distance] rendering function = NULL");
-        System.out.println("[RA-QuadTree-Distance] error function = AVG Euclidean Distance");
+        System.out.println("[RA-QuadTree-DistanceV2] rendering function = NULL");
+        System.out.println("[RA-QuadTree-DistanceV2] error function = AVG Euclidean Distance");
 
         // initialize the timing map
         if (keepTiming) {
             timing = new HashMap<>();
-            timing.put("total", 0.0);
+            timing.put("insert", 0.0);
+            timing.put("selectSamples", 0.0);
+            timing.put("writeToFile", 0.0);
         }
 
         /** For query stats */
@@ -518,7 +520,7 @@ public class RAQuadTreeDistanceV2 implements IAlgorithm {
     }
 
     public boolean readFromFile(String fileName) {
-        System.out.println("[RA-QuadTree-Distance] read from file " + fileName + " ... ...");
+        System.out.println("[RA-QuadTree-DistanceV2] read from file " + fileName + " ... ...");
 
         try {
             BufferedReader bufferedReader = new BufferedReader(new FileReader(fileName));
@@ -528,18 +530,18 @@ public class RAQuadTreeDistanceV2 implements IAlgorithm {
             bufferedReader.close();
             //--time--//
             long endTime = System.nanoTime();
-            System.out.println("[RA-QuadTree-Distance] read from file " + fileName + " done! Time: " + ((double) (endTime - startTime) / 1000000000.0) + " seconds.");
+            System.out.println("[RA-QuadTree-DistanceV2] read from file " + fileName + " done! Time: " + ((double) (endTime - startTime) / 1000000000.0) + " seconds.");
             finish = true;
             return true;
         } catch (IOException e) {
-            System.out.println("[RA-QuadTree-Distance] read from file " + fileName + " failed!");
+            System.out.println("[RA-QuadTree-DistanceV2] read from file " + fileName + " failed!");
             e.printStackTrace();
         }
         return false;
     }
 
     public boolean writeToFile(String fileName) {
-        System.out.println("[RA-QuadTree-Distance] write to file " + fileName + " ... ...");
+        System.out.println("[RA-QuadTree-DistanceV2] write to file " + fileName + " ... ...");
 
         try {
             File file = new File(fileName);
@@ -552,11 +554,18 @@ public class RAQuadTreeDistanceV2 implements IAlgorithm {
             fileOutputStream.close();
             //--time--//
             long endTime = System.nanoTime();
-            System.out.println("[RA-QuadTree-Distance] write to file " + fileName + " done! Time: " + ((double) (endTime - startTime) / 1000000000.0) + " seconds.");
+            double writeToFileTime = (double) (endTime - startTime) / 1000000000.0;
+            if (keepTiming) timing.put("writeToFile", writeToFileTime);
+            System.out.println("[RA-QuadTree-DistanceV2] write to file " + fileName + " done! Time: " + writeToFileTime + " seconds.");
+            System.out.println("==== Data writing to file finished ====");
+            this.printTiming();
+            System.gc();
+            System.runFinalization();
+            MyMemory.printMemory();
             return true;
         }
         catch (IOException e) {
-            System.out.println("[RA-QuadTree-Distance] write to file " + fileName + " failed!");
+            System.out.println("[RA-QuadTree-DistanceV2] write to file " + fileName + " failed!");
             e.printStackTrace();
         }
 
@@ -564,9 +573,8 @@ public class RAQuadTreeDistanceV2 implements IAlgorithm {
     }
 
     public void load(List<Point> points) {
-        System.out.println("[RA-QuadTree-Distance] loading " + points.size() + " points ... ...");
+        System.out.println("[RA-QuadTree-DistanceV2] loading " + points.size() + " points ... ...");
 
-        MyTimer.startTimer();
         this.totalNumberOfPoints += points.size();
         int count = 0;
         int skip = 0;
@@ -580,15 +588,9 @@ public class RAQuadTreeDistanceV2 implements IAlgorithm {
         MyTimer.stopTimer();
         double insertTime = MyTimer.durationSeconds();
         this.totalStoredNumberOfPoints += count;
-        System.out.println("[RA-QuadTree-Distance] inserted " + count + " points and skipped " + skip + " points.");
-        System.out.println("[RA-QuadTree-Distance] insertion time: " + insertTime + " seconds.");
-
-        MyTimer.stopTimer();
-        double loadTime = MyTimer.durationSeconds();
-
-        if (keepTiming) timing.put("total", timing.get("total") + loadTime);
-        System.out.println("[RA-QuadTree-Distance] loading is done!");
-        System.out.println("[RA-QuadTree-Distance] loading time: " + loadTime + " seconds.");
+        System.out.println("[RA-QuadTree-DistanceV2] inserted " + count + " points and skipped " + skip + " points.");
+        System.out.println("[RA-QuadTree-DistanceV2] insertion time: " + insertTime + " seconds.");
+        if (keepTiming) timing.put("insert", timing.get("insert") + insertTime);
         if (keepTiming) this.printTiming();
 
         MyMemory.printMemory();
@@ -610,9 +612,12 @@ public class RAQuadTreeDistanceV2 implements IAlgorithm {
         this.quadTree.selectSamples(0.5, 0.5, 0.5, 0);
         MyTimer.stopTimer();
         double selectSamplesTime = MyTimer.durationSeconds();
+        if (keepTiming) timing.put("selectSamples", selectSamplesTime);
+        System.out.println("[RA-QuadTree-DistanceV2] select best sample for each node is done!");
+        System.out.println("[RA-QuadTree-DistanceV2] sample selection time: " + selectSamplesTime + " seconds.");
         System.out.println("==== Data loading finished ====");
-        System.out.println("[RA-QuadTree-Distance] select best sample for each node is done!");
-        System.out.println("[RA-QuadTree-Distance] sample selection time: " + selectSamplesTime + " seconds.");
+        this.printTiming();
+        MyMemory.printMemory();
     }
 
     public static double computeBenefit(int _zoom, int _level, QuadTree _node) {
@@ -665,7 +670,7 @@ public class RAQuadTreeDistanceV2 implements IAlgorithm {
     public byte[] answerQuery(Query query) {
 
         if (!this.finish) {
-            System.out.println("[RA-QuadTree-Distance] has not finished loading data, will not answer this query!");
+            System.out.println("[RA-QuadTree-DistanceV2] has not finished loading data, will not answer this query!");
             MyTimer.temporaryTimer.put("treeTime", 0.0);
             MyTimer.temporaryTimer.put("aggregateTime", 0.0);
             BinaryMessageBuilder messageBuilder = new BinaryMessageBuilder();
@@ -685,7 +690,7 @@ public class RAQuadTreeDistanceV2 implements IAlgorithm {
         int sampleSize = query.sampleSize <= 0? Constants.DEFAULT_SAMPLE_SIZE: query.sampleSize;
 
         MyTimer.startTimer();
-        System.out.println("[RA-QuadTree-Distance] is answering query: \n" +
+        System.out.println("[RA-QuadTree-DistanceV2] is answering query: \n" +
                 "Q = { \n" +
                 "    range: [" + lng0 + ", " + lat0 + "] ~ [" + lng1 + ", " + lat1 + "], \n" +
                 "    resolution: [" + resX + " x " + resY + "], \n" +
@@ -703,7 +708,7 @@ public class RAQuadTreeDistanceV2 implements IAlgorithm {
         double rhalfWidth = (iX1 - iX0) / 2;
         double rhalfHeight = (iY0 - iY1) / 2;
 
-        System.out.println("[RA-QuadTree-Distance] starting range search on QuadTree with: \n" +
+        System.out.println("[RA-QuadTree-DistanceV2] starting range search on QuadTree with: \n" +
                 "bbox = [(" + iX0 + ", " + iY0 + "), (" + iX1 + ", " + iY1 + ")] ; \n" +
                 "range = [(" + rcX + ", " + rcY + "), " + rhalfWidth + ", " + rhalfHeight + "] ; \n" +
                 "pixelScale = " + pixelScale + ";");
@@ -716,17 +721,17 @@ public class RAQuadTreeDistanceV2 implements IAlgorithm {
         times.put("computeBenefit", 0.0);
 
         MyTimer.startTimer();
-        System.out.println("[RA-QuadTree-Distance] is doing a best first search with sampleSize = " + sampleSize + ".");
+        System.out.println("[RA-QuadTree-DistanceV2] is doing a best first search with sampleSize = " + sampleSize + ".");
         List<Point> points = this.quadTree.bfs(0.5, 0.5, 0.5,
                 rcX, rcY, rhalfWidth, rhalfHeight, zoom, sampleSize);
         MyTimer.stopTimer();
         double treeTime = MyTimer.durationSeconds();
 
         MyTimer.temporaryTimer.put("treeTime", treeTime);
-        System.out.println("[RA-QuadTree-Distance] tree search got " + points.size() + " data points.");
-        System.out.println("[RA-QuadTree-Distance] tree search time: " + treeTime + " seconds.");
-        System.out.println("[RA-QuadTree-Distance]     - compute benefit time: " + times.get("computeBenefit") + " seconds.");
-        System.out.println("[RA-QuadTree-Distance]     - compute benefit was called: " + computeBenefitTimes + " times.");
+        System.out.println("[RA-QuadTree-DistanceV2] tree search got " + points.size() + " data points.");
+        System.out.println("[RA-QuadTree-DistanceV2] tree search time: " + treeTime + " seconds.");
+        System.out.println("[RA-QuadTree-DistanceV2]     - compute benefit time: " + times.get("computeBenefit") + " seconds.");
+        System.out.println("[RA-QuadTree-DistanceV2]     - compute benefit was called: " + computeBenefitTimes + " times.");
 
         // build binary result message
         MyTimer.startTimer();
@@ -743,12 +748,12 @@ public class RAQuadTreeDistanceV2 implements IAlgorithm {
         double buildBinaryTime = MyTimer.durationSeconds();
         MyTimer.temporaryTimer.put("aggregateTime", buildBinaryTime);
 
-        System.out.println("[RA-QuadTree-Distance] build binary result with  " + resultSize + " points.");
-        System.out.println("[RA-QuadTree-Distance] build binary result time: " + buildBinaryTime + " seconds.");
+        System.out.println("[RA-QuadTree-DistanceV2] build binary result with  " + resultSize + " points.");
+        System.out.println("[RA-QuadTree-DistanceV2] build binary result time: " + buildBinaryTime + " seconds.");
 
         MyTimer.stopTimer();
-        System.out.println("[RA-QuadTree-Distance] answer query total time: " + MyTimer.durationSeconds() + " seconds.");
-        System.out.println("[RA-QuadTree-Distance] ---- # of nodes stopping at each level ----");
+        System.out.println("[RA-QuadTree-DistanceV2] answer query total time: " + MyTimer.durationSeconds() + " seconds.");
+        System.out.println("[RA-QuadTree-DistanceV2] ---- # of nodes stopping at each level ----");
         for (int i = 0; i <= Constants.MAX_ZOOM + 9; i ++) {
             System.out.println("Level " + i + ": " + numberOfNodesStoppedAtLevels[i]);
         }
@@ -757,7 +762,9 @@ public class RAQuadTreeDistanceV2 implements IAlgorithm {
     }
 
     private void printTiming() {
-        System.out.println("[Total Time] " + timing.get("total") + " seconds.");
+        System.out.println("========== Building RA-QuadTree-DistanceV2 Timings ==========");
+        System.out.println("insert time,    selectSamples time,    writeToFile time");
+        System.out.println(timing.get("insert") + ",    " + timing.get("selectSamples") + ",    " + timing.get("writeToFile"));
     }
 
     public static void printRenderingGray(String name, byte[] _rendering, int _resolution, boolean _expansion) {
