@@ -532,6 +532,9 @@ public class RAQuadTreeDistanceV2 implements IAlgorithm {
             long endTime = System.nanoTime();
             System.out.println("[RA-QuadTree-DistanceV2] read from file " + fileName + " done! Time: " + ((double) (endTime - startTime) / 1000000000.0) + " seconds.");
             finish = true;
+            System.gc();
+            System.runFinalization();
+            MyMemory.printMemory();
             return true;
         } catch (IOException e) {
             System.out.println("[RA-QuadTree-DistanceV2] read from file " + fileName + " failed!");
