@@ -406,6 +406,13 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
                 $scope.drawMWScatterLayer($scope.points);
               }
               break;
+            case "file":
+              $scope.cleanScatterLayer();
+              $scope.scatterType = e.scatterType;
+              if ($scope.rawData) {
+                $scope.drawFEScatterLayer($scope.rawData);
+              }
+              break;
           }
         });
       }
@@ -1065,11 +1072,13 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
             $scope.scatterLayer = new WebGLPointLayer({renderMode: "pixel"}); // renderMode: raster / pixel
             $scope.scatterLayer.setPointSize(2 * pointRadius);
             $scope.scatterLayer.setPointColor(0, 0, 255);
+            $scope.map.addLayer($scope.scatterLayer);
             break;
           case "gl-raster":
             $scope.scatterLayer = new WebGLPointLayer({renderMode: "raster"}); // renderMode: raster / pixel
             $scope.scatterLayer.setPointSize(2 * pointRadius);
             $scope.scatterLayer.setPointColor(0, 0, 255);
+            $scope.map.addLayer($scope.scatterLayer);
             break;
           case "leaflet":
             $scope.scatterLayer = L.TileLayer.maskCanvas({
@@ -1080,9 +1089,23 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
               noMask: true//,  // true results in normal (filled) circled, instead masked circles
               //lineColor: 'blue'   // color of the circle outline if noMask is true
             });
+            $scope.map.addLayer($scope.scatterLayer);
+            break;
+          case "deck-gl":
+            $scope.scatterLayer = new deck.DeckGL({
+              container: 'deck-gl-canvas',
+              initialViewState: {
+                latitude: $scope.map.getCenter().lat,
+                longitude: $scope.map.getCenter().lng,
+                zoom: $scope.map.getZoom() - 1,
+                bearing: 0,
+                pitch: 0
+              },
+              controller: true,
+              layers: []
+            });
             break;
         }
-        $scope.map.addLayer($scope.scatterLayer);
         $scope.rawData = [];
       }
 
@@ -1127,6 +1150,37 @@ angular.module("clustermap.map", ["leaflet-directive", "clustermap.common"])
             break;
           case "leaflet":
             $scope.scatterLayer.setData(points);
+            break;
+          case "deck-gl":
+            const deckGLScatterplot = new deck.ScatterplotLayer({
+              /* unique id of this layer */
+              id: 'deck-gl-scatter',
+              data: $scope.rawData,
+              opacity: $scope.opacity,
+              /* data accessors */
+              radiusMinPixels: Math.round($scope.pointRadius),
+              getPosition: d => [d[1], d[0]],     // returns longitude, latitude, [altitude]
+              getRadius: d => $scope.pointRadius,  // returns radius in meters
+              getFillColor: d => [0, 0, 255]           // returns R, G, B, [A] in 0-255 range
+            });
+            $scope.scatterLayer.setProps(
+              {
+                layers: [deckGLScatterplot],
+                viewState:
+                  {
+                    latitude: $scope.map.getCenter().lat,
+                    longitude: $scope.map.getCenter().lng,
+                    zoom: $scope.map.getZoom() - 1,
+                    bearing: 0,
+                    pitch: 0
+                  }
+              });
+            console.log("==== view state for deck.lg ====");
+            console.log("latitude: " + $scope.map.getCenter().lat);
+            console.log("longitude: " + $scope.map.getCenter().lng);
+            console.log("zoom: " + ($scope.map.getZoom() - 1));
+            console.log("bearing: " + 0);
+            console.log("pitch: " + 0);
             break;
         }
         end = performance.now();
