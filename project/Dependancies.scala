@@ -16,7 +16,7 @@ object Dependencies {
     // jackson
     "com.fasterxml.jackson.core" % "jackson-core" % "2.9.4",
     // PostgreSQL
-    "org.postgresql" % "postgresql" % "42.1.4",
+    "org.postgresql" % "postgresql" % "42.2.1",
     // Smile ML Toolkit
     "com.github.haifengl" % "smile-core" % "1.5.3"
   )

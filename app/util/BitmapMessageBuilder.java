@@ -1,7 +1,5 @@
 package util;
 
-import org.omg.Messaging.SYNC_WITH_TRANSPORT;
-
 import static util.Constants.DOUBLE_BYTES;
 import static util.Constants.INT_BYTES;
 
