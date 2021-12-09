@@ -657,14 +657,20 @@ public class RAQuadTreeDistance implements IAlgorithm {
     public byte[] answerQuery(Query query) {
 
         if (!this.finish) {
-            System.out.println("[RA-QuadTree-Distance] has not finished loading data, will not answer this query!");
-            MyTimer.temporaryTimer.put("treeTime", 0.0);
-            MyTimer.temporaryTimer.put("aggregateTime", 0.0);
-            BinaryMessageBuilder messageBuilder = new BinaryMessageBuilder();
-            double lng = xLng(0.5);
-            double lat = yLat(0.5);
-            messageBuilder.add(lng, lat);
-            return messageBuilder.getBuffer();
+            // System.out.println("[RA-QuadTree-Distance] has not finished loading data, will not answer this query!");
+            // MyTimer.temporaryTimer.put("treeTime", 0.0);
+            // MyTimer.temporaryTimer.put("aggregateTime", 0.0);
+            // BinaryMessageBuilder messageBuilder = new BinaryMessageBuilder();
+            // double lng = xLng(0.5);
+            // double lat = yLat(0.5);
+            // messageBuilder.add(lng, lat);
+            // return messageBuilder.getBuffer();
+            System.out.println("[RA-QuadTree-Distance] has not finished loading data, select samples temporarily for progressive results!");
+            MyTimer.startTimer();
+            this.quadTree.selectSamples(0.5, 0.5, 0.5, 0);
+            MyTimer.stopTimer();
+            double selectSamplesTime = MyTimer.durationSeconds();
+            System.out.println("[RA-QuadTree-Distance] sample selection time: " + selectSamplesTime + " seconds.");
         }
 
         double lng0 = query.bbox[0];
